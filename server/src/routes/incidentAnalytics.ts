@@ -52,7 +52,10 @@ async function loadIncidentRows(
   });
 
   const submissionIds = incidents.map((incident) => incident.submissionId);
-  const submissions = await Submission.find({ _id: { $in: submissionIds } });
+  const submissions = await Submission.find({
+    _id: { $in: submissionIds },
+    tenantId,
+  });
   const ratingBySubmissionId = new Map(
     submissions.map((submission) => [
       submission._id.toString(),
@@ -170,7 +173,7 @@ function buildStaffPerformance(
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([staffMember, metrics]) => ({
       staffMember,
-      submissions: 0,
+      submissions: metrics.incidentsCreated,
       incidentsCreated: metrics.incidentsCreated,
       reviewed: metrics.reviewed,
       resolved: metrics.resolved,

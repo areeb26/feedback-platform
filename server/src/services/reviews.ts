@@ -1,4 +1,38 @@
 import type { ReviewSource } from "@feedback-platform/shared";
+import { createHash } from "node:crypto";
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  values.push(current.trim());
+  return values;
+}
 
 export function parseReviewCsv(csv: string) {
   const lines = csv.trim().split(/\r?\n/).filter(Boolean);
@@ -6,9 +40,9 @@ export function parseReviewCsv(csv: string) {
     return [];
   }
 
-  const headers = lines[0].split(",").map((header) => header.trim());
+  const headers = parseCsvLine(lines[0]);
   return lines.slice(1).map((line) => {
-    const values = line.split(",").map((value) => value.trim());
+    const values = parseCsvLine(line);
     const row = Object.fromEntries(
       headers.map((header, index) => [header, values[index] ?? ""]),
     );
@@ -16,6 +50,36 @@ export function parseReviewCsv(csv: string) {
       Object.entries(row).map(([key, value]) => [key.trim(), value.trim()]),
     );
   });
+}
+
+export function buildReviewExternalId(
+  source: ReviewSource,
+  row: Record<string, string>,
+) {
+  const providedId = row.externalId || row.id || row.reviewId;
+  if (providedId) return providedId;
+
+  return createHash("sha256")
+    .update(
+      [
+        source,
+        row.reviewerName,
+        row.rating,
+        row.content,
+        row.locationName,
+        row.listingName,
+        row.postedAt,
+      ].join("\0"),
+    )
+    .digest("hex");
+}
+
+export function formatCsvField(value: unknown) {
+  const text = value === null || value === undefined ? "" : String(value);
+  if (!/[",\r\n]/.test(text)) {
+    return text;
+  }
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 export function defaultStatusForSource(source: ReviewSource) {

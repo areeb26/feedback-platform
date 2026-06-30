@@ -1,5 +1,6 @@
-import express, { type Request } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { healthResponseSchema } from "@feedback-platform/shared";
+import { ZodError } from "zod";
 import type { ClerkAdminClient } from "./auth/clerkAdmin.js";
 import { createDefaultClerkAdminClient } from "./auth/clerkAdminClient.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
@@ -56,6 +57,21 @@ export function createApp(options: AppOptions = {}) {
   }
   adminRouter.use(createAdminRoutes(getAuth, superAdminUserIds, clerkClient));
   app.use("/api/admin", adminRouter);
+
+  app.use(
+    (
+      error: unknown,
+      _req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      if (error instanceof ZodError) {
+        res.status(400).json({ error: "Invalid request", details: error.issues });
+        return;
+      }
+      next(error);
+    },
+  );
 
   return app;
 }

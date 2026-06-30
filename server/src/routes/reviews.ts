@@ -9,8 +9,10 @@ import {
 import { Location } from "../models/location.js";
 import { Review } from "../models/review.js";
 import {
+  buildReviewExternalId,
   canReplyToReview,
   defaultStatusForSource,
+  formatCsvField,
   parseReviewCsv,
 } from "../services/reviews.js";
 
@@ -55,13 +57,14 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   if (filters.directory) mongoFilter.source = filters.directory;
   if (filters.rating) mongoFilter.rating = filters.rating;
   if (filters.listing) {
+    const listingRegex = escapeRegex(filters.listing);
     mongoFilter.$or = [
-      { locationName: { $regex: filters.listing, $options: "i" } },
-      { listingName: { $regex: filters.listing, $options: "i" } },
+      { locationName: { $regex: listingRegex, $options: "i" } },
+      { listingName: { $regex: listingRegex, $options: "i" } },
     ];
   }
   if (filters.content) {
-    mongoFilter.content = { $regex: filters.content, $options: "i" };
+    mongoFilter.content = { $regex: escapeRegex(filters.content), $options: "i" };
   }
   if (filters.startDate || filters.endDate) {
     mongoFilter.postedAt = {
@@ -71,6 +74,10 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   }
 
   return mongoFilter;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function createReviewRoutes() {
@@ -93,6 +100,16 @@ export function createReviewRoutes() {
           continue;
         }
 
+        const externalId = buildReviewExternalId(input.source, row);
+        const existingReview = await Review.findOne({
+          tenantId: req.tenant!.id,
+          source: input.source,
+          externalId,
+        });
+        if (existingReview) {
+          continue;
+        }
+
         let locationId;
         if (row.locationName) {
           const location = await Location.findOne({
@@ -105,6 +122,7 @@ export function createReviewRoutes() {
         await Review.create({
           tenantId: req.tenant!.id,
           source: input.source,
+          externalId,
           reviewerName: row.reviewerName,
           rating,
           content: row.content,
@@ -163,11 +181,11 @@ export function createReviewRoutes() {
             review.reviewerName,
             review.rating,
             review.status,
-            `"${review.content.replaceAll('"', '""')}"`,
+            review.content,
             review.locationName ?? "",
             review.postedAt.toISOString(),
             review.replyText ?? "",
-          ].join(","),
+          ].map(formatCsvField).join(","),
         );
       }
 
