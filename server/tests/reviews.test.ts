@@ -12,7 +12,8 @@ import { registerTestDbHooks } from "./db.js";
 registerTestDbHooks();
 
 const foodpandaCsv = `reviewerName,rating,content,locationName,postedAt
-Izhan,5,"Great food, fresh sweets",Hafiz Sweets - Saudabad,2026-06-30T13:50:00.000Z`;
+Izhan,5,"Great food, fresh sweets
+Loved it",Hafiz Sweets - Saudabad,2026-06-30T13:50:00.000Z`;
 
 const googleCsv = `reviewerName,rating,content,locationName,postedAt
 kashif shah,4,Average,Hafiz Sweets,2026-06-30T13:50:00.000Z`;
@@ -48,7 +49,7 @@ describe("tenant reviews", () => {
     const review = reviewSchema.parse(list.body[0]);
     expect(review.source).toBe("foodpanda");
     expect(review.reviewerName).toBe("Izhan");
-    expect(review.content).toBe("Great food, fresh sweets");
+    expect(review.content).toBe("Great food, fresh sweets\nLoved it");
     expect(review.status).toBe("reply_not_supported");
     expect(review.canReply).toBe(false);
 
@@ -119,7 +120,7 @@ describe("tenant reviews", () => {
     expect(exported.status).toBe(200);
     expect(exported.text).toContain("Izhan");
     expect(exported.text).toContain("Bilal Ahmed");
-    expect(exported.text).toContain('"Great food, fresh sweets"');
+    expect(exported.text).toContain('"Great food, fresh sweets\nLoved it"');
   });
 
   it("skips invalid import rows and escapes exported spreadsheet formulas", async () => {

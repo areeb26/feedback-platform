@@ -34,8 +34,49 @@ function parseCsvLine(line: string) {
   return values;
 }
 
+function splitCsvRecords(csv: string) {
+  const records: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const character = csv[index];
+    const nextCharacter = csv[index + 1];
+
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      current += '""';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      current += character;
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (current.trim()) {
+        records.push(current);
+      }
+      current = "";
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.trim()) {
+    records.push(current);
+  }
+  return records;
+}
+
 export function parseReviewCsv(csv: string) {
-  const lines = csv.trim().split(/\r?\n/).filter(Boolean);
+  const lines = splitCsvRecords(csv.trim());
   if (lines.length < 2) {
     return [];
   }
