@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { GoogleCallbackPage } from "../src/pages/GoogleCallbackPage";
 
@@ -13,6 +13,12 @@ const connectedResponse = {
 };
 
 describe("GoogleCallbackPage", () => {
+  afterEach(() => {
+    cleanup();
+    window.sessionStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
   it("completes the callback and returns to the tenant reviews page", async () => {
     window.sessionStorage.setItem("google_oauth_state", "state_123");
     window.sessionStorage.setItem("google_oauth_slug", "hafiz-sweets");

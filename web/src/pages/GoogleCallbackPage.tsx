@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { completeGoogleCallback } from "../api/google";
 
 export function GoogleCallbackPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [message, setMessage] = useState("Completing Google connection...");
 
   useEffect(() => {
     async function completeConnection() {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(location.search);
       const code = params.get("code");
       const state = params.get("state");
       const storedState = window.sessionStorage.getItem("google_oauth_state");
@@ -32,7 +33,7 @@ export function GoogleCallbackPage() {
     }
 
     completeConnection();
-  }, [navigate]);
+  }, [location.search, navigate]);
 
   return <div>{message}</div>;
 }
