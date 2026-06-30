@@ -10,6 +10,12 @@ import {
   reviewStatusLabel,
   sourceLabel,
 } from "../../api/reviews";
+import {
+  fetchGoogleConnection,
+  startGoogleConnect,
+  syncGoogleReviews,
+  type GoogleConnection,
+} from "../../api/google";
 
 function statusBadgeStyle(status: Review["status"]) {
   if (status === "replied") {
@@ -48,6 +54,9 @@ export function ReviewsPage() {
   const [rating, setRating] = useState("");
   const [listing, setListing] = useState("");
   const [content, setContent] = useState("");
+  const [googleConnection, setGoogleConnection] =
+    useState<GoogleConnection | null>(null);
+  const [googleMessage, setGoogleMessage] = useState<string | null>(null);
 
   const filters = useMemo(() => {
     const query: Record<string, string> = {};
@@ -63,7 +72,12 @@ export function ReviewsPage() {
   }
 
   useEffect(() => {
-    loadReviews().catch(() => setError("Could not load reviews"));
+    Promise.all([
+      loadReviews(),
+      fetchGoogleConnection(slug)
+        .then(setGoogleConnection)
+        .catch(() => undefined),
+    ]).catch(() => setError("Could not load reviews"));
   }, [slug, filters]);
 
   const unrepliedIds = reviews
@@ -90,10 +104,42 @@ export function ReviewsPage() {
 
   async function handleReply(reviewId: string) {
     if (!replyText.trim()) return;
-    await replyToReview(slug, reviewId, { replyText: replyText.trim() });
-    setReplyingId(null);
-    setReplyText("");
-    await loadReviews();
+    try {
+      await replyToReview(slug, reviewId, { replyText: replyText.trim() });
+      setReplyingId(null);
+      setReplyText("");
+      await loadReviews();
+    } catch {
+      setGoogleMessage("Could not post reply. Check Google connection.");
+    }
+  }
+
+  async function handleGoogleConnect() {
+    try {
+      const { authUrl, state } = await startGoogleConnect(slug);
+      window.sessionStorage.setItem("google_oauth_state", state);
+      window.location.href = authUrl;
+    } catch {
+      setGoogleMessage("Could not start Google connect flow.");
+    }
+  }
+
+  async function handleGoogleSync() {
+    try {
+      const result = await syncGoogleReviews(slug);
+      setGoogleMessage(
+        `Synced ${result.imported} new and ${result.updated} updated reviews.`,
+      );
+      setGoogleConnection(await fetchGoogleConnection(slug));
+      await loadReviews();
+    } catch (syncError) {
+      setGoogleMessage(
+        syncError instanceof Error
+          ? syncError.message
+          : "Google sync failed",
+      );
+      setGoogleConnection(await fetchGoogleConnection(slug));
+    }
   }
 
   if (error) {
@@ -114,6 +160,15 @@ export function ReviewsPage() {
       >
         <h1>Reviews</h1>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {googleConnection?.status === "connected" ? (
+            <button type="button" onClick={handleGoogleSync}>
+              Sync Google Reviews
+            </button>
+          ) : (
+            <button type="button" onClick={handleGoogleConnect}>
+              Connect Google Reviews
+            </button>
+          )}
           <label style={{ cursor: "pointer" }}>
             Import Foodpanda CSV
             <input
@@ -136,6 +191,23 @@ export function ReviewsPage() {
           <a href={exportReviewsUrl(slug, filters)}>Export</a>
         </div>
       </div>
+
+      {googleConnection?.errorMessage ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 8,
+            background: "#fef2f2",
+            color: "#991b1b",
+          }}
+        >
+          Google connection issue: {googleConnection.errorMessage}
+        </div>
+      ) : null}
+      {googleMessage ? (
+        <div style={{ marginBottom: 16, color: "#4b5563" }}>{googleMessage}</div>
+      ) : null}
 
       <div
         style={{

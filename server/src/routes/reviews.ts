@@ -13,6 +13,8 @@ import {
   defaultStatusForSource,
   parseReviewCsv,
 } from "../services/reviews.js";
+import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
+import { postGoogleReviewReply } from "../services/googleReviews.js";
 
 function toReviewResponse(review: {
   _id: { toString(): string };
@@ -73,7 +75,7 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   return mongoFilter;
 }
 
-export function createReviewRoutes() {
+export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
   return {
     async list(req: Request, res: Response) {
       const reviews = await Review.find(
@@ -138,6 +140,22 @@ export function createReviewRoutes() {
       if (!canReplyToReview({ source: review.source, status: review.status })) {
         res.status(400).json({ error: "Reply not supported for this review" });
         return;
+      }
+
+      if (review.source === "google" && review.externalId && googleClient) {
+        try {
+          await postGoogleReviewReply({
+            tenantId: req.tenant!.id,
+            reviewExternalId: review.externalId,
+            replyText: input.replyText,
+            client: googleClient,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Google reply failed";
+          res.status(502).json({ error: message });
+          return;
+        }
       }
 
       review.status = "replied";
