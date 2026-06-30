@@ -10,6 +10,10 @@ import {
   resolveGooglePlacesClient,
   type GooglePlacesClient,
 } from "./auth/googlePlaces.js";
+import {
+  resolveOpenAiClient,
+  type OpenAiClient,
+} from "./auth/openai.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
@@ -25,6 +29,7 @@ export type AppOptions = {
   clerkClient?: ClerkAdminClient;
   googleClient?: GoogleBusinessClient;
   placesClient?: GooglePlacesClient;
+  openAiClient?: OpenAiClient;
 };
 
 function parseSuperAdminIds(): string[] {
@@ -40,6 +45,7 @@ export function createApp(options: AppOptions = {}) {
   const clerkClient = resolveClerkClient(options);
   const googleClient = resolveGoogleClient(options);
   const placesClient = resolvePlacesClient(options);
+  const openAiClient = resolveOpenAiClient(options.openAiClient);
   const app = express();
 
   app.use(express.json());
@@ -59,7 +65,7 @@ export function createApp(options: AppOptions = {}) {
   if (!options.getAuth) {
     tenantRouter.use(clerkMiddleware());
   }
-  tenantRouter.use(createTenantRoutes(getAuth, googleClient, placesClient));
+  tenantRouter.use(createTenantRoutes(getAuth, googleClient, placesClient, openAiClient));
   app.use("/api/tenant", tenantRouter);
 
   const adminRouter = express.Router();

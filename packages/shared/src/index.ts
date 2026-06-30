@@ -132,3 +132,16 @@ export {
   type Listing,
   type ListingSyncResponse,
 } from "./listing.js";
+export {
+  autoReplyRuleSchema,
+  createAutoReplyRuleRequestSchema,
+  generateRepliesDraftSchema,
+  generateRepliesRequestSchema,
+  generateRepliesResponseSchema,
+  updateAutoReplyRuleRequestSchema,
+  type AutoReplyRule,
+  type CreateAutoReplyRuleRequest,
+  type GenerateRepliesRequest,
+  type GenerateRepliesResponse,
+  type UpdateAutoReplyRuleRequest,
+} from "./aiReplies.js";

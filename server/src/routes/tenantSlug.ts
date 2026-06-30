@@ -26,6 +26,9 @@ import { createReviewAnalyticsRoutes } from "./reviewAnalytics.js";
 import { createGoogleRoutes } from "./google.js";
 import { createListingRoutes } from "./listings.js";
 import { createCompetitorRoutes } from "./competitors.js";
+import { createAutoReplyRuleRoutes } from "./autoReplyRules.js";
+import type { OpenAiClient } from "../auth/openai.js";
+import { createNoopOpenAiClient } from "../auth/openai.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -45,6 +48,7 @@ export function createTenantSlugRoutes(
   getAuth: (req: Request) => AuthContext | null,
   googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
   placesClient: GooglePlacesClient = createNoopGooglePlacesClient(),
+  openAiClient: OpenAiClient = createNoopOpenAiClient(),
 ): Router {
   const router = createRouter({ mergeParams: true });
   const guard = [requireAuth(getAuth), attachTenantFromSlug];
@@ -128,11 +132,26 @@ export function createTenantSlugRoutes(
     incidentAnalyticsRoutes.get,
   );
 
-  const reviewRoutes = createReviewRoutes(googleClient);
+  const reviewRoutes = createReviewRoutes(googleClient, openAiClient);
   router.get("/reviews", ...guard, reviewRoutes.list);
   router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
+  router.post("/reviews/generate-replies", ...guard, reviewRoutes.generateReplies);
   router.patch("/reviews/:reviewId/reply", ...guard, reviewRoutes.reply);
   router.get("/reviews/export", ...guard, reviewRoutes.exportCsv);
+
+  const autoReplyRuleRoutes = createAutoReplyRuleRoutes();
+  router.get("/auto-reply-rules", ...guard, autoReplyRuleRoutes.list);
+  router.post("/auto-reply-rules", ...guard, autoReplyRuleRoutes.create);
+  router.patch(
+    "/auto-reply-rules/:ruleId",
+    ...guard,
+    autoReplyRuleRoutes.update,
+  );
+  router.delete(
+    "/auto-reply-rules/:ruleId",
+    ...guard,
+    autoReplyRuleRoutes.remove,
+  );
 
   const reviewAnalyticsRoutes = createReviewAnalyticsRoutes();
   router.get(
