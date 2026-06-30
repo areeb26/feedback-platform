@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { App } from "../src/App";
+import { HomePage } from "../src/pages/HomePage";
 
-describe("App", () => {
+describe("HomePage", () => {
   it("shows api status when health check succeeds", async () => {
     vi.stubGlobal(
       "fetch",
@@ -12,7 +12,7 @@ describe("App", () => {
       }),
     );
 
-    render(<App />);
+    render(<HomePage />);
 
     expect(await screen.findByText("API: ok")).toBeTruthy();
   });

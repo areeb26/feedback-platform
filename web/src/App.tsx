@@ -1,20 +1,19 @@
-import { useEffect, useState } from "react";
-
-type HealthState = "loading" | "ok" | "error";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AdminLayout } from "./pages/admin/AdminLayout";
+import { CreateTenantPage } from "./pages/admin/CreateTenantPage";
+import { TenantsPage } from "./pages/admin/TenantsPage";
+import { HomePage } from "./pages/HomePage";
 
 export function App() {
-  const [health, setHealth] = useState<HealthState>("loading");
-
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => setHealth(data.status === "ok" ? "ok" : "error"))
-      .catch(() => setHealth("error"));
-  }, []);
-
-  if (health === "loading") {
-    return <div>Loading...</div>;
-  }
-
-  return <div>API: {health}</div>;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="tenants" element={<TenantsPage />} />
+          <Route path="tenants/new" element={<CreateTenantPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
 }

@@ -31,6 +31,8 @@ npm run dev:web
 
 Open http://localhost:5173 — you should see `API: ok`.
 
+Super-admin panel: http://localhost:5173/admin/tenants (requires Clerk session + `SUPER_ADMIN_USER_IDS` on API).
+
 ## Test
 
 ```bash

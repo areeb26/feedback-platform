@@ -1,2 +1,12 @@
 export { healthResponseSchema, type HealthResponse } from "./health.js";
-export { tenantProfileSchema, type TenantProfile } from "./tenant.js";
+export {
+  adminTenantSchema,
+  createTenantRequestSchema,
+  tenantProfileSchema,
+  tenantUsageSchema,
+  updateTenantRequestSchema,
+  type AdminTenant,
+  type CreateTenantRequest,
+  type TenantProfile,
+  type UpdateTenantRequest,
+} from "./tenant.js";
