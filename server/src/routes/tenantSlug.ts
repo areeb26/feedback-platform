@@ -15,6 +15,9 @@ import {
 } from "./surveys.js";
 import { createCustomerRoutes } from "./submissions.js";
 import { createIncidentRoutes } from "./incidents.js";
+import { createOverviewRoutes } from "./overview.js";
+import { createIncidentAnalyticsRoutes } from "./incidentAnalytics.js";
+import { createReviewRoutes } from "./reviews.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -103,6 +106,22 @@ export function createTenantSlugRoutes(
   router.get("/incidents", ...guard, incidentRoutes.list);
   router.post("/incidents", ...guard, incidentRoutes.create);
   router.patch("/incidents/:incidentId", ...guard, incidentRoutes.update);
+
+  const overviewRoutes = createOverviewRoutes();
+  router.get("/overview", ...guard, overviewRoutes.get);
+
+  const incidentAnalyticsRoutes = createIncidentAnalyticsRoutes();
+  router.get(
+    "/analytics/incidents",
+    ...guard,
+    incidentAnalyticsRoutes.get,
+  );
+
+  const reviewRoutes = createReviewRoutes();
+  router.get("/reviews", ...guard, reviewRoutes.list);
+  router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
+  router.patch("/reviews/:reviewId/reply", ...guard, reviewRoutes.reply);
+  router.get("/reviews/export", ...guard, reviewRoutes.exportCsv);
 
   return router;
 }
