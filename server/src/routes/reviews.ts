@@ -16,7 +16,10 @@ import {
   parseReviewCsv,
 } from "../services/reviews.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
-import { postGoogleReviewReply } from "../services/googleReviews.js";
+import {
+  getGoogleConnection,
+  postGoogleReviewReply,
+} from "../services/googleReviews.js";
 
 const MAX_IMPORT_ROWS = 1000;
 
@@ -189,7 +192,11 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
         return;
       }
 
-      if (review.source === "google" && review.externalId && googleClient) {
+      const googleConnection =
+        review.source === "google" && review.externalId
+          ? await getGoogleConnection(req.tenant!.id)
+          : null;
+      if (googleConnection && googleClient) {
         try {
           await postGoogleReviewReply({
             tenantId: req.tenant!.id,
