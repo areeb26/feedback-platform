@@ -32,3 +32,12 @@ export {
   type SurveyQuestion,
   type UpdateSurveyRequest,
 } from "./survey.js";
+export {
+  customerSchema,
+  submitSurveyRequestSchema,
+  submitSurveyResponseSchema,
+  submissionAnswerSchema,
+  type Customer,
+  type SubmitSurveyRequest,
+  type SubmitSurveyResponse,
+} from "./submission.js";

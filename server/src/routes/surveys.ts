@@ -7,29 +7,33 @@ import {
   updateSurveyRequestSchema,
 } from "@feedback-platform/shared";
 import { Survey } from "../models/survey.js";
+import { Submission } from "../models/submission.js";
 import { Tenant } from "../models/tenant.js";
 import { generatePreviewSlug } from "../utils/previewSlug.js";
 
-function toSurveyResponse(survey: {
-  _id: { toString(): string };
-  name: string;
-  previewSlug: string;
-  locationId?: { toString(): string } | null;
-  questions: Array<{
-    id: string;
-    type: "rating" | "text";
-    label: string;
-    required?: boolean | null;
-  }>;
-  createdAt: Date;
-}) {
+function toSurveyResponse(
+  survey: {
+    _id: { toString(): string };
+    name: string;
+    previewSlug: string;
+    locationId?: { toString(): string } | null;
+    questions: Array<{
+      id: string;
+      type: "rating" | "text";
+      label: string;
+      required?: boolean | null;
+    }>;
+    createdAt: Date;
+  },
+  submissionCount: number,
+) {
   return surveySchema.parse({
     id: survey._id.toString(),
     name: survey.name,
     previewSlug: survey.previewSlug,
     previewPath: `/s/${survey.previewSlug}`,
     locationId: survey.locationId?.toString() ?? null,
-    submissionCount: 0,
+    submissionCount,
     createdAt: survey.createdAt.toISOString(),
     questions: survey.questions.map((question) => ({
       id: question.id,
@@ -38,6 +42,10 @@ function toSurveyResponse(survey: {
       required: question.required ?? true,
     })),
   });
+}
+
+async function countSubmissions(surveyId: string) {
+  return Submission.countDocuments({ surveyId });
 }
 
 export function createSurveyRoutes(): Router {
@@ -91,7 +99,15 @@ export function createTenantSurveyRoutes(): {
       const surveys = await Survey.find({ tenantId: req.tenant!.id }).sort({
         createdAt: -1,
       });
-      res.json(surveys.map((survey) => toSurveyResponse(survey)));
+      const rows = await Promise.all(
+        surveys.map(async (survey) =>
+          toSurveyResponse(
+            survey,
+            await countSubmissions(survey._id.toString()),
+          ),
+        ),
+      );
+      res.json(rows);
     },
 
     async create(req, res) {
@@ -103,7 +119,7 @@ export function createTenantSurveyRoutes(): {
         previewSlug: generatePreviewSlug(),
         questions: input.questions,
       });
-      res.status(201).json(toSurveyResponse(survey));
+      res.status(201).json(toSurveyResponse(survey, 0));
     },
 
     async update(req, res) {
@@ -124,7 +140,12 @@ export function createTenantSurveyRoutes(): {
       if (input.questions !== undefined) survey.questions = input.questions;
 
       await survey.save();
-      res.json(toSurveyResponse(survey));
+      res.json(
+        toSurveyResponse(
+          survey,
+          await countSubmissions(survey._id.toString()),
+        ),
+      );
     },
 
     async remove(req, res) {

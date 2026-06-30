@@ -13,6 +13,7 @@ import { Location } from "../models/location.js";
 import {
   createTenantSurveyRoutes,
 } from "./surveys.js";
+import { createCustomerRoutes } from "./submissions.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -92,6 +93,10 @@ export function createTenantSlugRoutes(
   router.post("/surveys", ...guard, surveyRoutes.create);
   router.patch("/surveys/:surveyId", ...guard, surveyRoutes.update);
   router.delete("/surveys/:surveyId", ...guard, surveyRoutes.remove);
+
+  const customerRoutes = createCustomerRoutes();
+  router.get("/customers", ...guard, customerRoutes.list);
+  router.get("/customers/export", ...guard, customerRoutes.exportCsv);
 
   return router;
 }

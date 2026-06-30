@@ -1,10 +1,13 @@
 import {
   createSurveyRequestSchema,
   publicSurveySchema,
+  submitSurveyRequestSchema,
+  submitSurveyResponseSchema,
   surveySchema,
   updateSurveyRequestSchema,
   type CreateSurveyRequest,
   type PublicSurvey,
+  type SubmitSurveyRequest,
   type Survey,
   type UpdateSurveyRequest,
 } from "@feedback-platform/shared";
@@ -76,6 +79,22 @@ export async function fetchPublicSurvey(
     throw new Error("Failed to load survey");
   }
   return publicSurveySchema.parse(await response.json());
+}
+
+export async function submitPublicSurvey(
+  previewSlug: string,
+  input: SubmitSurveyRequest,
+) {
+  const body = submitSurveyRequestSchema.parse(input);
+  const response = await fetch(`/api/public/surveys/${previewSlug}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to submit survey");
+  }
+  return submitSurveyResponseSchema.parse(await response.json());
 }
 
 export function formatSurveyDate(isoDate: string) {

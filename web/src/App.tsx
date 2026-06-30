@@ -6,6 +6,7 @@ import { HomePage } from "./pages/HomePage";
 import { TenantLayout } from "./layouts/TenantLayout";
 import { LocationsPage } from "./pages/tenant/LocationsPage";
 import { OverviewPage } from "./pages/tenant/OverviewPage";
+import { CustomersPage } from "./pages/tenant/CustomersPage";
 import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
@@ -23,7 +24,7 @@ export function App() {
         <Route path="/t/:slug" element={<TenantLayout />}>
           <Route index element={<Navigate to="overview" replace />} />
           <Route path="overview" element={<OverviewPage />} />
-          <Route path="customers" element={<PlaceholderPage title="Customers" />} />
+          <Route path="customers" element={<CustomersPage />} />
           <Route path="incidents" element={<PlaceholderPage title="Incidents" />} />
           <Route
             path="analytics/incidents"
