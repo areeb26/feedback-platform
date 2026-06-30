@@ -12,6 +12,8 @@ export async function ensureAccessToken(
     accessToken: string;
     refreshToken: string;
     expiresAt: Date;
+    status: "connected" | "expired" | "error";
+    errorMessage?: string;
     save(): Promise<unknown>;
   },
   client: GoogleBusinessClient,
