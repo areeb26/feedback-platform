@@ -22,6 +22,7 @@ import { createIncidentAnalyticsRoutes } from "./incidentAnalytics.js";
 import { createReviewRoutes } from "./reviews.js";
 import { createReviewAnalyticsRoutes } from "./reviewAnalytics.js";
 import { createGoogleRoutes } from "./google.js";
+import { createListingRoutes } from "./listings.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -140,6 +141,10 @@ export function createTenantSlugRoutes(
   router.post("/google/connect", ...guard, googleRoutes.connect);
   router.post("/google/callback", ...guard, googleRoutes.callback);
   router.post("/google/sync", ...guard, googleRoutes.sync);
+
+  const listingRoutes = createListingRoutes(googleClient);
+  router.get("/listings", ...guard, listingRoutes.list);
+  router.post("/listings/sync", ...guard, listingRoutes.sync);
 
   return router;
 }

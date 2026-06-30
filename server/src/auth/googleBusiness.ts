@@ -1,3 +1,11 @@
+export type GoogleListingPayload = {
+  externalId: string;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  locationName?: string;
+};
+
 export type GoogleReviewPayload = {
   externalId: string;
   reviewerName: string;
@@ -28,6 +36,10 @@ export type GoogleBusinessClient = {
     accessToken: string;
     accountId: string;
   }): Promise<GoogleReviewPayload[]>;
+  listListings(input: {
+    accessToken: string;
+    accountId: string;
+  }): Promise<GoogleListingPayload[]>;
   postReply(input: {
     accessToken: string;
     accountId: string;
@@ -52,6 +64,9 @@ export function createNoopGoogleBusinessClient(): GoogleBusinessClient {
       throw new Error("Google Business client not configured");
     },
     async listReviews() {
+      throw new Error("Google Business client not configured");
+    },
+    async listListings() {
       throw new Error("Google Business client not configured");
     },
     async postReply() {
