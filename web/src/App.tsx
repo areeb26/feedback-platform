@@ -10,6 +10,7 @@ import { OverviewPage } from "./pages/tenant/OverviewPage";
 import { CustomersPage } from "./pages/tenant/CustomersPage";
 import { IncidentAnalyticsPage } from "./pages/tenant/IncidentAnalyticsPage";
 import { ReviewsPage } from "./pages/tenant/ReviewsPage";
+import { ReviewAnalyticsPage } from "./pages/tenant/ReviewAnalyticsPage";
 import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
@@ -37,7 +38,7 @@ export function App() {
           <Route path="reviews" element={<ReviewsPage />} />
           <Route
             path="analytics/reviews"
-            element={<PlaceholderPage title="Review Analytics" />}
+            element={<ReviewAnalyticsPage />}
           />
           <Route
             path="analytics/competitors"

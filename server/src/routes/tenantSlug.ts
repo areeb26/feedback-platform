@@ -18,6 +18,7 @@ import { createIncidentRoutes } from "./incidents.js";
 import { createOverviewRoutes } from "./overview.js";
 import { createIncidentAnalyticsRoutes } from "./incidentAnalytics.js";
 import { createReviewRoutes } from "./reviews.js";
+import { createReviewAnalyticsRoutes } from "./reviewAnalytics.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -122,6 +123,13 @@ export function createTenantSlugRoutes(
   router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
   router.patch("/reviews/:reviewId/reply", ...guard, reviewRoutes.reply);
   router.get("/reviews/export", ...guard, reviewRoutes.exportCsv);
+
+  const reviewAnalyticsRoutes = createReviewAnalyticsRoutes();
+  router.get(
+    "/analytics/reviews",
+    ...guard,
+    reviewAnalyticsRoutes.get,
+  );
 
   return router;
 }
