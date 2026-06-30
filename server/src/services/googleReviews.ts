@@ -3,20 +3,22 @@ import { GoogleConnection } from "../models/googleConnection.js";
 import { Review } from "../models/review.js";
 import { applyAutoReplyRules } from "./autoReplyRules.js";
 
+type PersistedGoogleConnection = {
+  _id: { toString(): string };
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  status: "connected" | "expired" | "error";
+  errorMessage?: string | null;
+  save(): Promise<unknown>;
+};
+
 export async function getGoogleConnection(tenantId: string) {
   return GoogleConnection.findOne({ tenantId });
 }
 
 export async function ensureAccessToken(
-  connection: {
-    _id: { toString(): string };
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: Date;
-    status?: "connected" | "expired" | "error";
-    errorMessage?: string;
-    save(): Promise<unknown>;
-  },
+  connection: PersistedGoogleConnection,
   client: GoogleBusinessClient,
 ) {
   if (connection.expiresAt.getTime() > Date.now() + 60_000) {

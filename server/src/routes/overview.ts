@@ -38,6 +38,31 @@ function submissionFilter(
   };
 }
 
+async function loadIncidents(
+  tenantId: string,
+  range: { start: Date; end: Date },
+  filters: { locationId?: string; surveyId?: string },
+) {
+  const incidentFilter: Record<string, unknown> = {
+    tenantId,
+    createdAt: { $gte: range.start, $lte: range.end },
+    ...(filters.locationId ? { locationId: filters.locationId } : {}),
+  };
+
+  if (filters.surveyId) {
+    const submissions = await Submission.find({
+      tenantId,
+      surveyId: filters.surveyId,
+      ...(filters.locationId ? { locationId: filters.locationId } : {}),
+    }).select("_id");
+    incidentFilter.submissionId = {
+      $in: submissions.map((submission) => submission._id),
+    };
+  }
+
+  return Incident.find(incidentFilter);
+}
+
 export function createOverviewRoutes(googleClient?: GoogleBusinessClient) {
   return {
     async get(req: Request, res: Response) {
@@ -56,16 +81,12 @@ export function createOverviewRoutes(googleClient?: GoogleBusinessClient) {
               filters,
             ),
           ),
-          Incident.find({
+          loadIncidents(tenantId, { start, end }, filters),
+          loadIncidents(
             tenantId,
-            createdAt: { $gte: start, $lte: end },
-            ...(filters.locationId ? { locationId: filters.locationId } : {}),
-          }),
-          Incident.find({
-            tenantId,
-            createdAt: { $gte: previousStart, $lte: previousEnd },
-            ...(filters.locationId ? { locationId: filters.locationId } : {}),
-          }),
+            { start: previousStart, end: previousEnd },
+            filters,
+          ),
         ]);
 
       const ratings = submissions

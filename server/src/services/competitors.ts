@@ -31,6 +31,10 @@ function toCompetitorResponse(competitor: {
   };
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export async function listCompetitors(tenantId: string) {
   const competitors = await Competitor.find({ tenantId }).sort({ name: 1 });
   return competitors.map(toCompetitorResponse);
@@ -183,7 +187,7 @@ export async function getCompetitorAnalytics(input: {
     filter._id = { $in: input.competitorIds };
   }
   if (input.search) {
-    filter.name = { $regex: input.search, $options: "i" };
+    filter.name = { $regex: escapeRegex(input.search), $options: "i" };
   }
 
   const competitors = await Competitor.find(filter).sort({ name: 1 });
