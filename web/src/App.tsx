@@ -7,12 +7,15 @@ import { TenantLayout } from "./layouts/TenantLayout";
 import { LocationsPage } from "./pages/tenant/LocationsPage";
 import { OverviewPage } from "./pages/tenant/OverviewPage";
 import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
+import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
+import { SurveysPage } from "./pages/tenant/SurveysPage";
 
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/s/:previewSlug" element={<SurveyPreviewPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="tenants" element={<TenantsPage />} />
           <Route path="tenants/new" element={<CreateTenantPage />} />
@@ -40,7 +43,7 @@ export function App() {
             path="social-listening"
             element={<PlaceholderPage title="Social Listening" />}
           />
-          <Route path="surveys" element={<PlaceholderPage title="Surveys" />} />
+          <Route path="surveys" element={<SurveysPage />} />
           <Route path="settings" element={<LocationsPage />} />
         </Route>
       </Routes>

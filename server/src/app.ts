@@ -4,6 +4,7 @@ import type { ClerkAdminClient } from "./auth/clerkAdmin.js";
 import { createDefaultClerkAdminClient } from "./auth/clerkAdminClient.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
+import { createSurveyRoutes } from "./routes/surveys.js";
 import { createTenantRoutes } from "./routes/tenant.js";
 import type { AuthContext } from "./types.js";
 
@@ -37,6 +38,8 @@ export function createApp(options: AppOptions = {}) {
     });
     res.json(body);
   });
+
+  app.use("/api/public", createSurveyRoutes());
 
   const tenantRouter = express.Router();
   if (!options.getAuth) {

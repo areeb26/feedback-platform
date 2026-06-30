@@ -10,6 +10,9 @@ import type { AuthContext } from "../types.js";
 import { attachTenantFromSlug } from "../middleware/attachTenantFromSlug.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Location } from "../models/location.js";
+import {
+  createTenantSurveyRoutes,
+} from "./surveys.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -82,6 +85,13 @@ export function createTenantSlugRoutes(
       res.json(toLocationResponse(location));
     },
   );
+
+  const surveyRoutes = createTenantSurveyRoutes();
+
+  router.get("/surveys", ...guard, surveyRoutes.list);
+  router.post("/surveys", ...guard, surveyRoutes.create);
+  router.patch("/surveys/:surveyId", ...guard, surveyRoutes.update);
+  router.delete("/surveys/:surveyId", ...guard, surveyRoutes.remove);
 
   return router;
 }

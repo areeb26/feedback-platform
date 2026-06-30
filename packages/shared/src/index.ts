@@ -20,3 +20,15 @@ export {
   type TenantShell,
   type UpdateLocationRequest,
 } from "./location.js";
+export {
+  createSurveyRequestSchema,
+  publicSurveySchema,
+  surveyQuestionSchema,
+  surveySchema,
+  updateSurveyRequestSchema,
+  type CreateSurveyRequest,
+  type PublicSurvey,
+  type Survey,
+  type SurveyQuestion,
+  type UpdateSurveyRequest,
+} from "./survey.js";
