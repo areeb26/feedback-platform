@@ -2,18 +2,22 @@ import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { GoogleConnection } from "../models/googleConnection.js";
 import { Review } from "../models/review.js";
 
+type PersistedGoogleConnection = {
+  _id: { toString(): string };
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  status: "connected" | "expired" | "error";
+  errorMessage?: string | null;
+  save(): Promise<unknown>;
+};
+
 export async function getGoogleConnection(tenantId: string) {
   return GoogleConnection.findOne({ tenantId });
 }
 
 export async function ensureAccessToken(
-  connection: {
-    _id: { toString(): string };
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: Date;
-    save(): Promise<unknown>;
-  },
+  connection: PersistedGoogleConnection,
   client: GoogleBusinessClient,
 ) {
   if (connection.expiresAt.getTime() > Date.now() + 60_000) {

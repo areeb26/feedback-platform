@@ -28,8 +28,13 @@ export function defaultStatusForSource(source: ReviewSource) {
 export function canReplyToReview(input: {
   source: ReviewSource;
   status: string;
+  externalId?: string | null;
 }) {
-  return input.source === "google" && input.status === "not_replied";
+  return (
+    input.source === "google" &&
+    input.status === "not_replied" &&
+    Boolean(input.externalId)
+  );
 }
 
 export function reviewStatusLabel(status: string) {
