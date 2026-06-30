@@ -22,7 +22,7 @@ export function TenantLayout() {
     return <div>Loading...</div>;
   }
 
-  const sections = tenantNavSections(slug);
+  const sections = tenantNavSections(slug, shell.featureFlags);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>

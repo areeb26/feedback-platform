@@ -15,3 +15,4 @@ server/dist/
 mobile/.expo/
 mobile/dist/
 /tmp/
+.worktrees/

@@ -12,7 +12,9 @@ import { CustomersPage } from "./pages/tenant/CustomersPage";
 import { IncidentAnalyticsPage } from "./pages/tenant/IncidentAnalyticsPage";
 import { ReviewsPage } from "./pages/tenant/ReviewsPage";
 import { ReviewAnalyticsPage } from "./pages/tenant/ReviewAnalyticsPage";
-import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
+import { ListingsPage } from "./pages/tenant/ListingsPage";
+import { CompetitorAnalyticsPage } from "./pages/tenant/CompetitorAnalyticsPage";
+import { SocialListeningPage } from "./pages/tenant/SocialListeningPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
 
@@ -36,7 +38,7 @@ export function App() {
             path="analytics/incidents"
             element={<IncidentAnalyticsPage />}
           />
-          <Route path="listings" element={<PlaceholderPage title="Listings" />} />
+          <Route path="listings" element={<ListingsPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
           <Route
             path="analytics/reviews"
@@ -44,12 +46,9 @@ export function App() {
           />
           <Route
             path="analytics/competitors"
-            element={<PlaceholderPage title="Competitor Analytics" />}
+            element={<CompetitorAnalyticsPage />}
           />
-          <Route
-            path="social-listening"
-            element={<PlaceholderPage title="Social Listening" />}
-          />
+          <Route path="social-listening" element={<SocialListeningPage />} />
           <Route path="surveys" element={<SurveysPage />} />
           <Route path="settings" element={<LocationsPage />} />
         </Route>

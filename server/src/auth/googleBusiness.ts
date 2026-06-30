@@ -1,3 +1,11 @@
+export type GoogleListingPayload = {
+  externalId: string;
+  name: string;
+  rating: number;
+  reviewCount: number;
+  locationName?: string;
+};
+
 export type GoogleReviewPayload = {
   externalId: string;
   reviewerName: string;
@@ -28,6 +36,10 @@ export type GoogleBusinessClient = {
     accessToken: string;
     accountId: string;
   }): Promise<GoogleReviewPayload[]>;
+  listListings(input: {
+    accessToken: string;
+    accountId: string;
+  }): Promise<GoogleListingPayload[]>;
   postReply(input: {
     accessToken: string;
     accountId: string;
@@ -89,6 +101,9 @@ export function createNoopGoogleBusinessClient(): GoogleBusinessClient {
       throw new Error("Google Business client not configured");
     },
     async listReviews() {
+      throw new Error("Google Business client not configured");
+    },
+    async listListings() {
       throw new Error("Google Business client not configured");
     },
     async postReply() {
@@ -159,6 +174,10 @@ export function createDefaultGoogleBusinessClient(
 
     async listReviews({ accessToken, accountId }) {
       return listAllGoogleReviews(accessToken, accountId);
+    },
+
+    async listListings({ accessToken, accountId }) {
+      return listAllGoogleListings(accessToken, accountId);
     },
 
     async postReply({ accessToken, reviewExternalId, replyText }) {
@@ -247,6 +266,34 @@ async function listAllGoogleReviews(
     ),
   );
   return reviews.flat();
+}
+
+async function listAllGoogleListings(
+  accessToken: string,
+  accountId: string,
+): Promise<GoogleListingPayload[]> {
+  const locations = await listLocations(accessToken, accountId);
+  return Promise.all(
+    locations.map(async (location) => {
+      const externalId = requireString(location.name, "location.name");
+      const reviews = await listLocationReviews(accessToken, accountId, location);
+      const reviewCount = reviews.length;
+      const rating =
+        reviewCount === 0
+          ? 0
+          : reviews.reduce((sum, review) => sum + review.rating, 0) /
+            reviewCount;
+      const locationName = location.title ?? externalId;
+
+      return {
+        externalId,
+        name: locationName,
+        rating,
+        reviewCount,
+        locationName,
+      };
+    }),
+  );
 }
 
 async function listLocations(accessToken: string, accountId: string) {

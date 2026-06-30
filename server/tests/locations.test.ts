@@ -73,6 +73,12 @@ describe("GET /api/tenant/by-slug/:slug/shell", () => {
       name: "Hafiz Sweets",
       logoUrl: null,
       primaryColor: "#7c3aed",
+      featureFlags: {
+        socialListening: false,
+        competitorAnalytics: false,
+        aiReplies: false,
+        googleReviews: false,
+      },
     });
   });
 

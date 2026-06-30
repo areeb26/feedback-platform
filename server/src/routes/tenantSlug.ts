@@ -9,6 +9,8 @@ import {
 import type { AuthContext } from "../types.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { createNoopGoogleBusinessClient } from "../auth/googleBusiness.js";
+import type { GooglePlacesClient } from "../auth/googlePlaces.js";
+import { createNoopGooglePlacesClient } from "../auth/googlePlaces.js";
 import { attachTenantFromSlug } from "../middleware/attachTenantFromSlug.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Location } from "../models/location.js";
@@ -22,6 +24,8 @@ import { createIncidentAnalyticsRoutes } from "./incidentAnalytics.js";
 import { createReviewRoutes } from "./reviews.js";
 import { createReviewAnalyticsRoutes } from "./reviewAnalytics.js";
 import { createGoogleRoutes } from "./google.js";
+import { createListingRoutes } from "./listings.js";
+import { createCompetitorRoutes } from "./competitors.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -40,6 +44,7 @@ function toLocationResponse(location: {
 export function createTenantSlugRoutes(
   getAuth: (req: Request) => AuthContext | null,
   googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
+  placesClient: GooglePlacesClient = createNoopGooglePlacesClient(),
 ): Router {
   const router = createRouter({ mergeParams: true });
   const guard = [requireAuth(getAuth), attachTenantFromSlug];
@@ -51,6 +56,7 @@ export function createTenantSlugRoutes(
         name: req.tenant!.name,
         logoUrl: req.tenant!.logoUrl,
         primaryColor: req.tenant!.primaryColor,
+        featureFlags: req.tenant!.featureFlags,
       }),
     );
   });
@@ -140,6 +146,30 @@ export function createTenantSlugRoutes(
   router.post("/google/connect", ...guard, googleRoutes.connect);
   router.post("/google/callback", ...guard, googleRoutes.callback);
   router.post("/google/sync", ...guard, googleRoutes.sync);
+
+  const listingRoutes = createListingRoutes(googleClient);
+  router.get("/listings", ...guard, listingRoutes.list);
+  router.post("/listings/sync", ...guard, listingRoutes.sync);
+
+  const competitorRoutes = createCompetitorRoutes(placesClient);
+  router.get("/competitors", ...guard, competitorRoutes.list);
+  router.post("/competitors", ...guard, competitorRoutes.create);
+  router.patch(
+    "/competitors/:competitorId",
+    ...guard,
+    competitorRoutes.update,
+  );
+  router.delete(
+    "/competitors/:competitorId",
+    ...guard,
+    competitorRoutes.remove,
+  );
+  router.post("/competitors/refresh", ...guard, competitorRoutes.refresh);
+  router.get(
+    "/analytics/competitors",
+    ...guard,
+    competitorRoutes.analytics,
+  );
 
   return router;
 }

@@ -25,11 +25,21 @@ export const updateLocationRequestSchema = z.object({
 
 export type UpdateLocationRequest = z.infer<typeof updateLocationRequestSchema>;
 
+export const tenantFeatureFlagsSchema = z.object({
+  socialListening: z.boolean(),
+  competitorAnalytics: z.boolean(),
+  aiReplies: z.boolean(),
+  googleReviews: z.boolean(),
+});
+
+export type TenantFeatureFlags = z.infer<typeof tenantFeatureFlagsSchema>;
+
 export const tenantShellSchema = z.object({
   slug: z.string(),
   name: z.string(),
   logoUrl: z.string().nullable(),
   primaryColor: z.string(),
+  featureFlags: tenantFeatureFlagsSchema,
 });
 
 export type TenantShell = z.infer<typeof tenantShellSchema>;

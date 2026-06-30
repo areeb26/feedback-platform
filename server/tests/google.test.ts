@@ -38,6 +38,7 @@ function createMockGoogleClient(): GoogleBusinessClient {
         postedAt: new Date("2026-06-30T13:50:00.000Z"),
       },
     ]),
+    listListings: vi.fn().mockResolvedValue([]),
     postReply: vi.fn().mockResolvedValue(undefined),
     getSummary: vi.fn().mockResolvedValue({
       reviewCount: 79,
