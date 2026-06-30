@@ -52,7 +52,10 @@ async function loadIncidentRows(
   });
 
   const submissionIds = incidents.map((incident) => incident.submissionId);
-  const submissions = await Submission.find({ _id: { $in: submissionIds } });
+  const submissions = await Submission.find({
+    _id: { $in: submissionIds },
+    tenantId,
+  });
   const ratingBySubmissionId = new Map(
     submissions.map((submission) => [
       submission._id.toString(),
@@ -126,6 +129,7 @@ function buildStaffPerformance(
       incidentsCreated: number;
       reviewed: number;
       resolved: number;
+      submissionIds: Set<string>;
       reviewMinutes: number[];
       resolveMinutes: number[];
     }
@@ -142,11 +146,13 @@ function buildStaffPerformance(
         incidentsCreated: 0,
         reviewed: 0,
         resolved: 0,
+        submissionIds: new Set<string>(),
         reviewMinutes: [],
         resolveMinutes: [],
       };
 
       bucket.incidentsCreated += 1;
+      bucket.submissionIds.add(row.incident.submissionId.toString());
       if (
         row.incident.status === "reviewed" ||
         row.incident.status === "resolved"
@@ -170,7 +176,7 @@ function buildStaffPerformance(
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([staffMember, metrics]) => ({
       staffMember,
-      submissions: 0,
+      submissions: metrics.submissionIds.size,
       incidentsCreated: metrics.incidentsCreated,
       reviewed: metrics.reviewed,
       resolved: metrics.resolved,

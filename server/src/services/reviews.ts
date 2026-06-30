@@ -1,14 +1,89 @@
 import type { ReviewSource } from "@feedback-platform/shared";
+import { createHash } from "node:crypto";
+
+function parseCsvLine(line: string) {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (character === "," && !inQuotes) {
+      values.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  values.push(current.trim());
+  return values;
+}
+
+function splitCsvRecords(csv: string) {
+  const records: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let index = 0; index < csv.length; index += 1) {
+    const character = csv[index];
+    const nextCharacter = csv[index + 1];
+
+    if (character === '"' && inQuotes && nextCharacter === '"') {
+      current += '""';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      inQuotes = !inQuotes;
+      current += character;
+      continue;
+    }
+
+    if ((character === "\n" || character === "\r") && !inQuotes) {
+      if (current.trim()) {
+        records.push(current);
+      }
+      current = "";
+      if (character === "\r" && nextCharacter === "\n") {
+        index += 1;
+      }
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.trim()) {
+    records.push(current);
+  }
+  return records;
+}
 
 export function parseReviewCsv(csv: string) {
-  const lines = csv.trim().split(/\r?\n/).filter(Boolean);
+  const lines = splitCsvRecords(csv.trim());
   if (lines.length < 2) {
     return [];
   }
 
-  const headers = lines[0].split(",").map((header) => header.trim());
+  const headers = parseCsvLine(lines[0]);
   return lines.slice(1).map((line) => {
-    const values = line.split(",").map((value) => value.trim());
+    const values = parseCsvLine(line);
     const row = Object.fromEntries(
       headers.map((header, index) => [header, values[index] ?? ""]),
     );
@@ -16,6 +91,36 @@ export function parseReviewCsv(csv: string) {
       Object.entries(row).map(([key, value]) => [key.trim(), value.trim()]),
     );
   });
+}
+
+export function buildReviewExternalId(
+  source: ReviewSource,
+  row: Record<string, string>,
+) {
+  const providedId = row.externalId || row.id || row.reviewId;
+  if (providedId) return providedId;
+
+  return createHash("sha256")
+    .update(
+      [
+        source,
+        row.reviewerName,
+        row.rating,
+        row.content,
+        row.locationName,
+        row.listingName,
+        row.postedAt,
+      ].join("\0"),
+    )
+    .digest("hex");
+}
+
+export function formatCsvField(value: unknown) {
+  let text = value === null || value === undefined ? "" : String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 export function defaultStatusForSource(source: ReviewSource) {

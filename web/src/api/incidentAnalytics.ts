@@ -52,6 +52,14 @@ export function formatDuration(minutes: number) {
   return parts.join(" ");
 }
 
+function formatCsvField(value: unknown) {
+  let text = value === null || value === undefined ? "" : String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
 export function exportStaffPerformanceCsv(
   rows: IncidentAnalytics["staffPerformance"],
 ) {
@@ -69,14 +77,14 @@ export function exportStaffPerformanceCsv(
   const body = rows
     .map((row) =>
       [
-        row.staffMember,
+        formatCsvField(row.staffMember),
         row.submissions,
         row.incidentsCreated,
         row.reviewed,
         row.resolved,
-        formatDuration(row.avgReviewMinutes),
-        formatDuration(row.avgResolveMinutes),
-        `${row.percentResolved}%`,
+        formatCsvField(formatDuration(row.avgReviewMinutes)),
+        formatCsvField(formatDuration(row.avgResolveMinutes)),
+        formatCsvField(`${row.percentResolved}%`),
       ].join(","),
     )
     .join("\n");
