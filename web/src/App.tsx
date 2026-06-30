@@ -12,6 +12,7 @@ import { IncidentAnalyticsPage } from "./pages/tenant/IncidentAnalyticsPage";
 import { ReviewsPage } from "./pages/tenant/ReviewsPage";
 import { ReviewAnalyticsPage } from "./pages/tenant/ReviewAnalyticsPage";
 import { ListingsPage } from "./pages/tenant/ListingsPage";
+import { CompetitorAnalyticsPage } from "./pages/tenant/CompetitorAnalyticsPage";
 import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
@@ -43,7 +44,7 @@ export function App() {
           />
           <Route
             path="analytics/competitors"
-            element={<PlaceholderPage title="Competitor Analytics" />}
+            element={<CompetitorAnalyticsPage />}
           />
           <Route
             path="social-listening"

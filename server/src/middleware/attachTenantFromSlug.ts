@@ -36,6 +36,12 @@ export async function attachTenantFromSlug(
     name: tenant.name,
     logoUrl: tenant.logoUrl ?? null,
     primaryColor: tenant.primaryColor,
+    featureFlags: {
+      socialListening: tenant.featureFlags?.socialListening ?? false,
+      competitorAnalytics: tenant.featureFlags?.competitorAnalytics ?? false,
+      aiReplies: tenant.featureFlags?.aiReplies ?? false,
+      googleReviews: tenant.featureFlags?.googleReviews ?? false,
+    },
   };
   next();
 }

@@ -6,6 +6,10 @@ import {
   createNoopGoogleBusinessClient,
   type GoogleBusinessClient,
 } from "./auth/googleBusiness.js";
+import {
+  resolveGooglePlacesClient,
+  type GooglePlacesClient,
+} from "./auth/googlePlaces.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
@@ -20,6 +24,7 @@ export type AppOptions = {
   superAdminUserIds?: string[];
   clerkClient?: ClerkAdminClient;
   googleClient?: GoogleBusinessClient;
+  placesClient?: GooglePlacesClient;
 };
 
 function parseSuperAdminIds(): string[] {
@@ -34,6 +39,7 @@ export function createApp(options: AppOptions = {}) {
   const superAdminUserIds = options.superAdminUserIds ?? parseSuperAdminIds();
   const clerkClient = resolveClerkClient(options);
   const googleClient = resolveGoogleClient(options);
+  const placesClient = resolvePlacesClient(options);
   const app = express();
 
   app.use(express.json());
@@ -53,7 +59,7 @@ export function createApp(options: AppOptions = {}) {
   if (!options.getAuth) {
     tenantRouter.use(clerkMiddleware());
   }
-  tenantRouter.use(createTenantRoutes(getAuth, googleClient));
+  tenantRouter.use(createTenantRoutes(getAuth, googleClient, placesClient));
   app.use("/api/tenant", tenantRouter);
 
   const adminRouter = express.Router();
@@ -71,6 +77,10 @@ function resolveGoogleClient(options: AppOptions): GoogleBusinessClient {
     return options.googleClient;
   }
   return createNoopGoogleBusinessClient();
+}
+
+function resolvePlacesClient(options: AppOptions): GooglePlacesClient {
+  return resolveGooglePlacesClient(options.placesClient);
 }
 
 function resolveClerkClient(options: AppOptions): ClerkAdminClient {

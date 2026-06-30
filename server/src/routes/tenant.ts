@@ -4,6 +4,8 @@ import { tenantProfileSchema } from "@feedback-platform/shared";
 import type { AuthContext } from "../types.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { createNoopGoogleBusinessClient } from "../auth/googleBusiness.js";
+import type { GooglePlacesClient } from "../auth/googlePlaces.js";
+import { createNoopGooglePlacesClient } from "../auth/googlePlaces.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireTenantSlug } from "../middleware/requireTenantSlug.js";
 import { resolveTenant } from "../middleware/resolveTenant.js";
@@ -12,6 +14,7 @@ import { createTenantSlugRoutes } from "./tenantSlug.js";
 export function createTenantRoutes(
   getAuth: (req: Request) => AuthContext | null,
   googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
+  placesClient: GooglePlacesClient = createNoopGooglePlacesClient(),
 ): Router {
   const router = createRouter();
 
@@ -41,7 +44,7 @@ export function createTenantRoutes(
     },
   );
 
-  router.use("/by-slug/:slug", createTenantSlugRoutes(getAuth, googleClient));
+  router.use("/by-slug/:slug", createTenantSlugRoutes(getAuth, googleClient, placesClient));
 
   return router;
 }

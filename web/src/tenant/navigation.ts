@@ -11,8 +11,29 @@ export type NavSection = {
   items: NavItem[];
 };
 
-export function tenantNavSections(slug: string): NavSection[] {
+export function tenantNavSections(
+  slug: string,
+  featureFlags?: { competitorAnalytics?: boolean },
+): NavSection[] {
   const base = `/t/${slug}`;
+  const reputationItems: NavItem[] = [
+    { label: "Listings", path: `${base}/listings` },
+    { label: "Reviews", path: `${base}/reviews` },
+    { label: "Review Analytics", path: `${base}/analytics/reviews` },
+  ];
+
+  if (featureFlags?.competitorAnalytics) {
+    reputationItems.push({
+      label: "Competitor Analytics",
+      path: `${base}/analytics/competitors`,
+    });
+  }
+
+  reputationItems.push({
+    label: "Social Listening",
+    path: `${base}/social-listening`,
+  });
+
   return [
     {
       title: "Feedback",
@@ -25,13 +46,7 @@ export function tenantNavSections(slug: string): NavSection[] {
     },
     {
       title: "Reputation",
-      items: [
-        { label: "Listings", path: `${base}/listings` },
-        { label: "Reviews", path: `${base}/reviews` },
-        { label: "Review Analytics", path: `${base}/analytics/reviews` },
-        { label: "Competitor Analytics", path: `${base}/analytics/competitors` },
-        { label: "Social Listening", path: `${base}/social-listening` },
-      ],
+      items: reputationItems,
     },
     {
       title: "Platform",
