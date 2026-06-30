@@ -92,6 +92,7 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
     expect(analytics.staffPerformance).toEqual([
       expect.objectContaining({
         staffMember: "user_1",
+        submissions: 1,
         incidentsCreated: 1,
         reviewed: 1,
         resolved: 1,

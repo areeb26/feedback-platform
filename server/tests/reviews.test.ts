@@ -121,4 +121,29 @@ describe("tenant reviews", () => {
     expect(exported.text).toContain("Bilal Ahmed");
     expect(exported.text).toContain('"Great food, fresh sweets"');
   });
+
+  it("skips invalid import rows and escapes exported spreadsheet formulas", async () => {
+    const app = await seedTenantApp();
+    const importResponse = await request(app)
+      .post("/api/tenant/by-slug/hafiz-sweets/reviews/import")
+      .send({
+        source: "google",
+        csv:
+          "reviewerName,rating,content,locationName,postedAt\n" +
+          "Bad Rating,6,Too high,Hafiz Sweets,2026-06-29T10:00:00.000Z\n" +
+          '"=HYPERLINK(""https://example.com"")",5,Formula name,Hafiz Sweets,2026-06-29T10:00:00.000Z',
+      });
+
+    expect(importResponse.status).toBe(201);
+    expect(importResponse.body.imported).toBe(1);
+
+    const exported = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/reviews/export",
+    );
+    expect(exported.status).toBe(200);
+    expect(exported.text).not.toContain("Bad Rating");
+    expect(exported.text).toContain(
+      '"\'=HYPERLINK(""https://example.com"")"',
+    );
+  });
 });
