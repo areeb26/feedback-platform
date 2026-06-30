@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const incidentAnalyticsQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.iso.datetime().optional(),
+  endDate: z.iso.datetime().optional(),
   locationId: z.string().optional(),
 });
 

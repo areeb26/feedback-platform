@@ -33,8 +33,8 @@ export const reviewListQuerySchema = z.object({
   rating: z.coerce.number().int().min(1).max(5).optional(),
   listing: z.string().optional(),
   content: z.string().optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.iso.datetime().optional(),
+  endDate: z.iso.datetime().optional(),
 });
 
 export type ReviewListQuery = z.infer<typeof reviewListQuerySchema>;

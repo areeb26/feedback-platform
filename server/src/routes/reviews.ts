@@ -16,6 +16,8 @@ import {
   parseReviewCsv,
 } from "../services/reviews.js";
 
+const MAX_IMPORT_ROWS = 1000;
+
 function toReviewResponse(review: {
   _id: { toString(): string };
   source: "google" | "foodpanda";
@@ -91,53 +93,80 @@ export function createReviewRoutes() {
 
     async importCsv(req: Request, res: Response) {
       const input = importReviewsRequestSchema.parse(req.body);
-      const rows = parseReviewCsv(input.csv);
-      let imported = 0;
+      const rows = parseReviewCsv(input.csv).slice(0, MAX_IMPORT_ROWS);
+      const tenantId = req.tenant!.id;
+      const locationNames = [
+        ...new Set(
+          rows
+            .map((row) => row.locationName)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ];
+      const locations = await Location.find({
+        tenantId,
+        name: { $in: locationNames },
+      });
+      const locationIdByName = new Map(
+        locations.map((location) => [location.name, location._id]),
+      );
 
+      const candidates = [];
       for (const row of rows) {
         const rating = Number(row.rating);
-        if (!row.reviewerName || !row.content || Number.isNaN(rating)) {
+        if (
+          !row.reviewerName ||
+          !row.content ||
+          !Number.isInteger(rating) ||
+          rating < 1 ||
+          rating > 5
+        ) {
+          continue;
+        }
+
+        const postedAt = row.postedAt ? new Date(row.postedAt) : new Date();
+        if (Number.isNaN(postedAt.getTime())) {
           continue;
         }
 
         const externalId = buildReviewExternalId(input.source, row);
-        const existingReview = await Review.findOne({
-          tenantId: req.tenant!.id,
-          source: input.source,
-          externalId,
-        });
-        if (existingReview) {
-          continue;
-        }
-
-        let locationId;
-        if (row.locationName) {
-          const location = await Location.findOne({
-            tenantId: req.tenant!.id,
-            name: row.locationName,
-          });
-          locationId = location?._id;
-        }
-
-        await Review.create({
-          tenantId: req.tenant!.id,
+        candidates.push({
+          tenantId,
           source: input.source,
           externalId,
           reviewerName: row.reviewerName,
           rating,
           content: row.content,
-          locationId,
+          locationId: row.locationName
+            ? locationIdByName.get(row.locationName)
+            : undefined,
           locationName: row.locationName || undefined,
           listingName: row.listingName || row.locationName || undefined,
           categories: row.categories
             ? row.categories.split("|").map((item) => item.trim())
             : [],
           status: defaultStatusForSource(input.source),
-          postedAt: row.postedAt ? new Date(row.postedAt) : new Date(),
+          postedAt,
         });
-        imported += 1;
       }
 
+      const existingReviews = await Review.find({
+        tenantId,
+        source: input.source,
+        externalId: { $in: candidates.map((review) => review.externalId) },
+      }).select("externalId");
+      const existingIds = new Set(
+        existingReviews
+          .map((review) => review.externalId)
+          .filter((externalId): externalId is string => Boolean(externalId)),
+      );
+      const newReviews = candidates.filter(
+        (review) => !existingIds.has(review.externalId),
+      );
+      if (newReviews.length > 0) {
+        await Review.insertMany(newReviews);
+      }
+
+      const imported = newReviews.length;
       res.status(201).json(importReviewsResponseSchema.parse({ imported }));
     },
 

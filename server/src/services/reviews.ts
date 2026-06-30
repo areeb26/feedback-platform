@@ -75,9 +75,9 @@ export function buildReviewExternalId(
 }
 
 export function formatCsvField(value: unknown) {
-  const text = value === null || value === undefined ? "" : String(value);
-  if (!/[",\r\n]/.test(text)) {
-    return text;
+  let text = value === null || value === undefined ? "" : String(value);
+  if (/^[=+\-@]/.test(text)) {
+    text = `'${text}`;
   }
   return `"${text.replaceAll('"', '""')}"`;
 }
