@@ -176,6 +176,10 @@ export function createDefaultGoogleBusinessClient(
       return listAllGoogleReviews(accessToken, accountId);
     },
 
+    async listListings({ accessToken, accountId }) {
+      return listAllGoogleListings(accessToken, accountId);
+    },
+
     async postReply({ accessToken, reviewExternalId, replyText }) {
       await fetchJson(
         `https://mybusiness.googleapis.com/v4/${reviewExternalId}/reply`,
@@ -262,6 +266,34 @@ async function listAllGoogleReviews(
     ),
   );
   return reviews.flat();
+}
+
+async function listAllGoogleListings(
+  accessToken: string,
+  accountId: string,
+): Promise<GoogleListingPayload[]> {
+  const locations = await listLocations(accessToken, accountId);
+  return Promise.all(
+    locations.map(async (location) => {
+      const externalId = requireString(location.name, "location.name");
+      const reviews = await listLocationReviews(accessToken, accountId, location);
+      const reviewCount = reviews.length;
+      const rating =
+        reviewCount === 0
+          ? 0
+          : reviews.reduce((sum, review) => sum + review.rating, 0) /
+            reviewCount;
+      const locationName = location.title ?? externalId;
+
+      return {
+        externalId,
+        name: locationName,
+        rating,
+        reviewCount,
+        locationName,
+      };
+    }),
+  );
 }
 
 async function listLocations(accessToken: string, accountId: string) {
