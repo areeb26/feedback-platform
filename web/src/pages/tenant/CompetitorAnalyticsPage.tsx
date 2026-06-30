@@ -158,7 +158,11 @@ export function CompetitorAnalyticsPage() {
   async function handleRefresh() {
     try {
       const result = await refreshCompetitors(slug);
-      setMessage(`Refreshed ${result.refreshed} competitors from Google Places.`);
+      const failedSuffix =
+        result.failed > 0 ? ` (${result.failed} failed)` : "";
+      setMessage(
+        `Refreshed ${result.refreshed} competitors from Google Places${failedSuffix}.`,
+      );
       await loadData();
     } catch (refreshError) {
       setMessage(
@@ -341,6 +345,9 @@ export function CompetitorAnalyticsPage() {
             }))
           }
         />
+        <span style={{ alignSelf: "center", color: "#6b7280", fontSize: 13 }}>
+          Date range is for display only in v1
+        </span>
       </div>
 
       <div
@@ -367,8 +374,8 @@ export function CompetitorAnalyticsPage() {
               Performance Categories Smile Scores
             </div>
             <p style={{ fontSize: 13, color: "#6b7280", marginTop: 4, marginBottom: 0 }}>
-              Comparison of your business&apos;s performance categories against
-              competitors
+              Overall Google rating shown in each category (detailed category
+              breakdown coming soon).
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

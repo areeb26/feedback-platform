@@ -17,6 +17,15 @@ import {
   updateCompetitor,
 } from "../services/competitors.js";
 
+function isDuplicateKeyError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: number }).code === 11000
+  );
+}
+
 function requireCompetitorAnalytics(req: Request, res: Response) {
   if (!req.tenant?.featureFlags.competitorAnalytics) {
     res.status(403).json({ error: "Competitor analytics not enabled" });
@@ -44,6 +53,12 @@ export function createCompetitorRoutes(placesClient: GooglePlacesClient) {
         );
         res.status(201).json(competitorSchema.parse(competitor));
       } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          res
+            .status(409)
+            .json({ error: "Competitor with the already exists" });
+          return;
+        }
         const message =
           error instanceof Error ? error.message : "Competitor create failed";
         res.status(502).json({ error: message });
@@ -87,17 +102,15 @@ export function createCompetitorRoutes(placesClient: GooglePlacesClient) {
 
     async refresh(req: Request, res: Response) {
       if (!requireCompetitorAnalytics(req, res)) return;
-      try {
-        const result = await refreshCompetitors({
-          tenantId: req.tenant!.id,
-          client: placesClient,
-        });
-        res.json(competitorRefreshResponseSchema.parse(result));
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Competitor refresh failed";
-        res.status(502).json({ error: message });
+      const result = await refreshCompetitors({
+        tenantId: req.tenant!.id,
+        client: placesClient,
+      });
+      if (result.refreshed === 0 && result.failed > 0) {
+        res.status(502).json({ error: "All competitor refreshes failed" });
+        return;
       }
+      res.json(competitorRefreshResponseSchema.parse(result));
     },
 
     async analytics(req: Request, res: Response) {

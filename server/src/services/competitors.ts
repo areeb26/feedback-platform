@@ -119,18 +119,23 @@ export async function refreshCompetitors(input: {
 }) {
   const competitors = await Competitor.find({ tenantId: input.tenantId });
   let refreshed = 0;
+  let failed = 0;
 
   for (const competitor of competitors) {
-    const details = await input.client.getPlaceDetails(competitor.placeId);
-    competitor.name = details.name || competitor.name;
-    competitor.rating = details.rating;
-    competitor.reviewCount = details.reviewCount;
-    competitor.lastRefreshedAt = new Date();
-    await competitor.save();
-    refreshed += 1;
+    try {
+      const details = await input.client.getPlaceDetails(competitor.placeId);
+      competitor.name = details.name || competitor.name;
+      competitor.rating = details.rating;
+      competitor.reviewCount = details.reviewCount;
+      competitor.lastRefreshedAt = new Date();
+      await competitor.save();
+      refreshed += 1;
+    } catch {
+      failed += 1;
+    }
   }
 
-  return { refreshed };
+  return { refreshed, failed };
 }
 
 async function getOwnBusinessListing(tenantId: string) {

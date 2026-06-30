@@ -115,7 +115,7 @@ function mockFetch() {
       if (url.includes("/competitors/refresh")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ refreshed: 1 }),
+          json: async () => ({ refreshed: 1, failed: 0 }),
         });
       }
       if (url.includes("/competitors")) {

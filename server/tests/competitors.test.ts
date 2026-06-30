@@ -108,9 +108,10 @@ describe("tenant competitors", () => {
       "/api/tenant/by-slug/hafiz-sweets/competitors/refresh",
     );
     expect(refresh.status).toBe(200);
-    expect(competitorRefreshResponseSchema.parse(refresh.body).refreshed).toBe(
-      2,
-    );
+    expect(competitorRefreshResponseSchema.parse(refresh.body)).toEqual({
+      refreshed: 2,
+      failed: 0,
+    });
 
     const refreshed = await Competitor.findOne({ placeId: "ChIJ_competitor_1" });
     expect(refreshed?.rating).toBe(5);
@@ -188,6 +189,113 @@ describe("tenant competitors", () => {
     expect(placesClient.getPlaceDetails).toHaveBeenCalledWith(
       "ChIJ_competitor_2",
     );
+  });
+
+  it("returns 409 when creating a competitor with duplicate placeId", async () => {
+    await seedTenantWithFlag(true);
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      placesClient: createMockPlacesClient(),
+    });
+
+    const first = await request(app)
+      .post("/api/tenant/by-slug/hafiz-sweets/competitors")
+      .send({ name: "Qasr e Shereen", placeId: "ChIJ_competitor_1" });
+    expect(first.status).toBe(201);
+
+    const duplicate = await request(app)
+      .post("/api/tenant/by-slug/hafiz-sweets/competitors")
+      .send({ name: "Duplicate", placeId: "ChIJ_competitor_1" });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body).toEqual({
+      error: "Competitor with the already exists",
+    });
+  });
+
+  it("continues refresh when some Places lookups fail", async () => {
+    const placesClient = createMockPlacesClient();
+    await seedTenantWithFlag(true);
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      placesClient,
+    });
+
+    await request(app)
+      .post("/api/tenant/by-slug/hafiz-sweets/competitors")
+      .send({ name: "Qasr e Shereen", placeId: "ChIJ_competitor_1" });
+    await Competitor.create({
+      tenantId: (await Tenant.findOne({ slug: "hafiz-sweets" }))!._id,
+      name: "Broken Place",
+      placeId: "ChIJ_missing",
+    });
+
+    const refresh = await request(app).post(
+      "/api/tenant/by-slug/hafiz-sweets/competitors/refresh",
+    );
+    expect(refresh.status).toBe(200);
+    expect(competitorRefreshResponseSchema.parse(refresh.body)).toEqual({
+      refreshed: 1,
+      failed: 1,
+    });
+  });
+
+  it("returns 502 when all competitor refreshes fail", async () => {
+    const placesClient = createMockPlacesClient();
+    await seedTenantWithFlag(true);
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      placesClient,
+    });
+
+    await Competitor.create({
+      tenantId: (await Tenant.findOne({ slug: "hafiz-sweets" }))!._id,
+      name: "Broken Place",
+      placeId: "ChIJ_missing",
+    });
+
+    const refresh = await request(app).post(
+      "/api/tenant/by-slug/hafiz-sweets/competitors/refresh",
+    );
+    expect(refresh.status).toBe(502);
+    expect(refresh.body).toEqual({ error: "All competitor refreshes failed" });
+  });
+
+  it("returns 404 when another tenant tries to delete or patch a competitor", async () => {
+    await seedTenantWithFlag(true);
+    await Tenant.create({
+      slug: "other-store",
+      name: "Other Store",
+      clerkOrgId: "org_other",
+      primaryColor: "#000000",
+      featureFlags: { competitorAnalytics: true },
+    });
+
+    const tenantAApp = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      placesClient: createMockPlacesClient(),
+    });
+    const tenantBApp = createApp({
+      getAuth: () => ({ userId: "user_2", orgId: "org_other" }),
+      placesClient: createMockPlacesClient(),
+    });
+
+    const created = await request(tenantAApp)
+      .post("/api/tenant/by-slug/hafiz-sweets/competitors")
+      .send({ name: "Qasr e Shereen", placeId: "ChIJ_competitor_1" });
+    const competitor = competitorSchema.parse(created.body);
+
+    const deleted = await request(tenantBApp).delete(
+      `/api/tenant/by-slug/other-store/competitors/${competitor.id}`,
+    );
+    expect(deleted.status).toBe(404);
+
+    const patched = await request(tenantBApp)
+      .patch(`/api/tenant/by-slug/other-store/competitors/${competitor.id}`)
+      .send({ name: "Hacked" });
+    expect(patched.status).toBe(404);
   });
 
   it("isolates competitors by tenant", async () => {

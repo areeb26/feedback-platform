@@ -35,6 +35,7 @@ export type UpdateCompetitorRequest = z.infer<
 
 export const competitorRefreshResponseSchema = z.object({
   refreshed: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
 });
 
 export type CompetitorRefreshResponse = z.infer<
