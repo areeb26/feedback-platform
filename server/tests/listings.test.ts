@@ -4,6 +4,7 @@ import { listingSchema, listingSyncResponseSchema } from "@feedback-platform/sha
 import type { GoogleBusinessClient } from "../src/auth/googleBusiness.js";
 import { createApp } from "../src/app.js";
 import { Location } from "../src/models/location.js";
+import { Listing } from "../src/models/listing.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
 
@@ -102,5 +103,48 @@ describe("tenant listings", () => {
     const listing = listingSchema.parse(list.body[0]);
     expect(listing.directory).toBe("google");
     expect(listing.locationName).toBeTruthy();
+  });
+
+  it("does not expose another tenant location name for a listing", async () => {
+    const tenant = await Tenant.create({
+      slug: "hafiz-sweets",
+      name: "Hafiz Sweets",
+      clerkOrgId: "org_hafiz",
+      primaryColor: "#7c3aed",
+    });
+    const otherTenant = await Tenant.create({
+      slug: "other-store",
+      name: "Other Store",
+      clerkOrgId: "org_other",
+      primaryColor: "#000000",
+    });
+    const otherLocation = await Location.create({
+      tenantId: otherTenant._id,
+      name: "Private Other Location",
+      labels: [],
+    });
+    await Listing.create({
+      tenantId: tenant._id,
+      locationId: otherLocation._id,
+      directory: "google",
+      externalId: "locations/cross-tenant",
+      name: "Hafiz Sweets",
+      rating: 4.3,
+      reviewCount: 65,
+    });
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      googleClient: createMockGoogleClient(),
+    });
+
+    const list = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/listings",
+    );
+
+    expect(list.status).toBe(200);
+    expect(list.body).toHaveLength(1);
+    const listing = listingSchema.parse(list.body[0]);
+    expect(listing.locationName).toBeNull();
   });
 });

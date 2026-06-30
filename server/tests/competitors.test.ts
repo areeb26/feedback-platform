@@ -191,6 +191,40 @@ describe("tenant competitors", () => {
     );
   });
 
+  it("treats competitor analytics search as literal text", async () => {
+    const tenant = await seedTenantWithFlag(true);
+    await Competitor.create({
+      tenantId: tenant._id,
+      name: "Qasr.e Shereen",
+      placeId: "ChIJ_literal_match",
+      rating: 4.8,
+      reviewCount: 70,
+    });
+    await Competitor.create({
+      tenantId: tenant._id,
+      name: "QasrXe Shereen",
+      placeId: "ChIJ_regex_match",
+      rating: 4.4,
+      reviewCount: 30,
+    });
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      placesClient: createMockPlacesClient(),
+    });
+
+    const analytics = await request(app)
+      .get("/api/tenant/by-slug/hafiz-sweets/analytics/competitors")
+      .query({ search: "Qasr.e" });
+
+    expect(analytics.status).toBe(200);
+    const data = competitorAnalyticsSchema.parse(analytics.body);
+    expect(data.columns.map((column) => column.name)).toEqual([
+      "Hafiz Sweets",
+      "Qasr.e Shereen",
+    ]);
+  });
+
   it("returns 409 when creating a competitor with duplicate placeId", async () => {
     await seedTenantWithFlag(true);
 
