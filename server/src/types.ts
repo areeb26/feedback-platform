@@ -10,6 +10,8 @@ declare module "express-serve-static-core" {
       id: string;
       slug: string;
       name: string;
+      logoUrl: string | null;
+      primaryColor: string;
     };
   }
 }

@@ -10,3 +10,13 @@ export {
   type TenantProfile,
   type UpdateTenantRequest,
 } from "./tenant.js";
+export {
+  createLocationRequestSchema,
+  locationSchema,
+  tenantShellSchema,
+  updateLocationRequestSchema,
+  type CreateLocationRequest,
+  type Location,
+  type TenantShell,
+  type UpdateLocationRequest,
+} from "./location.js";

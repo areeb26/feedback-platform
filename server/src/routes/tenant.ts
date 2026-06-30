@@ -5,6 +5,7 @@ import type { AuthContext } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireTenantSlug } from "../middleware/requireTenantSlug.js";
 import { resolveTenant } from "../middleware/resolveTenant.js";
+import { createTenantSlugRoutes } from "./tenantSlug.js";
 
 export function createTenantRoutes(getAuth: (req: Request) => AuthContext | null): Router {
   const router = createRouter();
@@ -34,6 +35,8 @@ export function createTenantRoutes(getAuth: (req: Request) => AuthContext | null
       res.json(body);
     },
   );
+
+  router.use("/by-slug/:slug", createTenantSlugRoutes(getAuth));
 
   return router;
 }
