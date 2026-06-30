@@ -8,6 +8,8 @@ import { IncidentsPage } from "./pages/tenant/IncidentsPage";
 import { LocationsPage } from "./pages/tenant/LocationsPage";
 import { OverviewPage } from "./pages/tenant/OverviewPage";
 import { CustomersPage } from "./pages/tenant/CustomersPage";
+import { IncidentAnalyticsPage } from "./pages/tenant/IncidentAnalyticsPage";
+import { ReviewsPage } from "./pages/tenant/ReviewsPage";
 import { PlaceholderPage } from "./pages/tenant/PlaceholderPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
@@ -29,10 +31,10 @@ export function App() {
           <Route path="incidents" element={<IncidentsPage />} />
           <Route
             path="analytics/incidents"
-            element={<PlaceholderPage title="Incident Analytics" />}
+            element={<IncidentAnalyticsPage />}
           />
           <Route path="listings" element={<PlaceholderPage title="Listings" />} />
-          <Route path="reviews" element={<PlaceholderPage title="Reviews" />} />
+          <Route path="reviews" element={<ReviewsPage />} />
           <Route
             path="analytics/reviews"
             element={<PlaceholderPage title="Review Analytics" />}
