@@ -1,8 +1,11 @@
 import {
   googleConnectCallbackRequestSchema,
   googleConnectStartRequestSchema,
+  googleConnectStartResponseSchema,
   googleConnectionSchema,
+  googleSyncResponseSchema,
   type GoogleConnection,
+  type GoogleSyncResponse,
 } from "@feedback-platform/shared";
 
 function tenantBase(slug: string) {
@@ -29,7 +32,7 @@ export async function startGoogleConnect(slug: string) {
   if (!response.ok) {
     throw new Error("Failed to start Google connect");
   }
-  return response.json() as Promise<{ authUrl: string; state: string }>;
+  return googleConnectStartResponseSchema.parse(await response.json());
 }
 
 export async function completeGoogleCallback(
@@ -51,7 +54,7 @@ export async function completeGoogleCallback(
   return googleConnectionSchema.parse(await response.json());
 }
 
-export async function syncGoogleReviews(slug: string) {
+export async function syncGoogleReviews(slug: string): Promise<GoogleSyncResponse> {
   const response = await fetch(`${tenantBase(slug)}/google/sync`, {
     method: "POST",
   });
@@ -59,7 +62,7 @@ export async function syncGoogleReviews(slug: string) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error ?? "Failed to sync Google reviews");
   }
-  return response.json() as Promise<{ imported: number; updated: number }>;
+  return googleSyncResponseSchema.parse(await response.json());
 }
 
 export type { GoogleConnection };

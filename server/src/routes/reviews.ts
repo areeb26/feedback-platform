@@ -34,6 +34,7 @@ function toReviewResponse(review: {
   categories?: string[] | null;
   status: "not_replied" | "replied" | "reply_not_supported";
   replyText?: string | null;
+  externalId?: string | null;
   postedAt: Date;
   createdAt: Date;
 }) {
@@ -53,6 +54,7 @@ function toReviewResponse(review: {
     canReply: canReplyToReview({
       source: review.source,
       status: review.status,
+      externalId: review.externalId,
     }),
   });
 }
@@ -187,16 +189,18 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
         return;
       }
 
-      if (!canReplyToReview({ source: review.source, status: review.status })) {
+      if (
+        !canReplyToReview({
+          source: review.source,
+          status: review.status,
+          externalId: review.externalId,
+        })
+      ) {
         res.status(400).json({ error: "Reply not supported for this review" });
         return;
       }
 
-      const googleConnection =
-        review.source === "google" && review.externalId
-          ? await getGoogleConnection(req.tenant!.id)
-          : null;
-      if (googleConnection && googleClient) {
+      if (review.source === "google" && googleClient) {
         try {
           await postGoogleReviewReply({
             tenantId: req.tenant!.id,
