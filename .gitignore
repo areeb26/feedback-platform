@@ -10,6 +10,8 @@ coverage/
 .turbo/
 .expo/
 web/dist/
+packages/shared/dist/
+server/dist/
 mobile/.expo/
 mobile/dist/
 /tmp/

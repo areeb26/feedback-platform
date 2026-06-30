@@ -1,16 +1,19 @@
 {
-  "name": "feedback-app",
+  "name": "feedback-platform",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "server",
+    "web",
+    "mobile"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run build --workspace=packages/shared && npm run test --workspace=server && npm run test --workspace=web",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=server && npm run build --workspace=web",
+    "docker:config": "docker compose config"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "playwright": "^1.61.1"
-  }
+  "license": "ISC"
 }
