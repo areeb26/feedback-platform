@@ -1,0 +1,73 @@
+[
+  {
+    "name": "01-dashboard-home",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51?periodStart=1780282800000&periodEnd=1782845999999",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/01-dashboard-home.png"
+  },
+  {
+    "name": "02-overview",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51?periodStart=1780282800000&periodEnd=1782845999999",
+    "label": "Overview",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/02-overview.png"
+  },
+  {
+    "name": "03-customers",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/customers?sorts=%7B%22field%22%3A%22createdAt%22%2C%22order%22%3A%22desc%22%7D",
+    "label": "Customers",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/03-customers.png"
+  },
+  {
+    "name": "04-incidents",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/incidents?sorts=%7B%22field%22%3A%22createdAt%22%2C%22order%22%3A%22desc%22%7D",
+    "label": "Incidents",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/04-incidents.png"
+  },
+  {
+    "name": "05-incident-analytics",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/analytics/incidents",
+    "label": "Incident Analytics",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/05-incident-analytics.png"
+  },
+  {
+    "name": "06-reviews",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/reviews?sorts=%7B%22field%22%3A%22createdAt%22%2C%22order%22%3A%22desc%22%7D",
+    "label": "Reviews",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/06-reviews.png"
+  },
+  {
+    "name": "07-review-analytics",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/analytics/reviews",
+    "label": "Review Analytics",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/07-review-analytics.png"
+  },
+  {
+    "name": "08-competitor-analytics",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/analytics/competitors",
+    "label": "Competitor Analytics",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/08-competitor-analytics.png"
+  },
+  {
+    "name": "09-social-listening",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/social-listening",
+    "label": "Social Listening",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/09-social-listening.png"
+  },
+  {
+    "name": "10-surveys",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/surveys?sorts=%7B%22field%22%3A%22createdAt%22%2C%22order%22%3A%22desc%22%7D",
+    "label": "Surveys",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/10-surveys.png"
+  },
+  {
+    "name": "11-listings",
+    "url": "https://www.harlyy.com/dashboard/listings",
+    "label": "Listings",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/11-listings.png"
+  },
+  {
+    "name": "12-settings",
+    "url": "https://dashboard.harlyy.com/bus_6a06f9945932d458d05f7a51/settings",
+    "label": "Settings",
+    "file": "/home/areebahmedkhan/Downloads/feedback app/screenshots/12-settings.png"
+  }
+]
