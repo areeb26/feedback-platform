@@ -9,12 +9,16 @@ import {
 import { Location } from "../models/location.js";
 import { Review } from "../models/review.js";
 import {
+  buildReviewExternalId,
   canReplyToReview,
   defaultStatusForSource,
+  formatCsvField,
   parseReviewCsv,
 } from "../services/reviews.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { postGoogleReviewReply } from "../services/googleReviews.js";
+
+const MAX_IMPORT_ROWS = 1000;
 
 function toReviewResponse(review: {
   _id: { toString(): string };
@@ -59,13 +63,14 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   if (filters.directory) mongoFilter.source = filters.directory;
   if (filters.rating) mongoFilter.rating = filters.rating;
   if (filters.listing) {
+    const listingRegex = escapeRegex(filters.listing);
     mongoFilter.$or = [
-      { locationName: { $regex: filters.listing, $options: "i" } },
-      { listingName: { $regex: filters.listing, $options: "i" } },
+      { locationName: { $regex: listingRegex, $options: "i" } },
+      { listingName: { $regex: listingRegex, $options: "i" } },
     ];
   }
   if (filters.content) {
-    mongoFilter.content = { $regex: filters.content, $options: "i" };
+    mongoFilter.content = { $regex: escapeRegex(filters.content), $options: "i" };
   }
   if (filters.startDate || filters.endDate) {
     mongoFilter.postedAt = {
@@ -75,6 +80,10 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   }
 
   return mongoFilter;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
@@ -88,42 +97,80 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
 
     async importCsv(req: Request, res: Response) {
       const input = importReviewsRequestSchema.parse(req.body);
-      const rows = parseReviewCsv(input.csv);
-      let imported = 0;
+      const rows = parseReviewCsv(input.csv).slice(0, MAX_IMPORT_ROWS);
+      const tenantId = req.tenant!.id;
+      const locationNames = [
+        ...new Set(
+          rows
+            .map((row) => row.locationName)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ];
+      const locations = await Location.find({
+        tenantId,
+        name: { $in: locationNames },
+      });
+      const locationIdByName = new Map(
+        locations.map((location) => [location.name, location._id]),
+      );
 
+      const candidates = [];
       for (const row of rows) {
         const rating = Number(row.rating);
-        if (!row.reviewerName || !row.content || Number.isNaN(rating)) {
+        if (
+          !row.reviewerName ||
+          !row.content ||
+          !Number.isInteger(rating) ||
+          rating < 1 ||
+          rating > 5
+        ) {
           continue;
         }
 
-        let locationId;
-        if (row.locationName) {
-          const location = await Location.findOne({
-            tenantId: req.tenant!.id,
-            name: row.locationName,
-          });
-          locationId = location?._id;
+        const postedAt = row.postedAt ? new Date(row.postedAt) : new Date();
+        if (Number.isNaN(postedAt.getTime())) {
+          continue;
         }
 
-        await Review.create({
-          tenantId: req.tenant!.id,
+        const externalId = buildReviewExternalId(input.source, row);
+        candidates.push({
+          tenantId,
           source: input.source,
+          externalId,
           reviewerName: row.reviewerName,
           rating,
           content: row.content,
-          locationId,
+          locationId: row.locationName
+            ? locationIdByName.get(row.locationName)
+            : undefined,
           locationName: row.locationName || undefined,
           listingName: row.listingName || row.locationName || undefined,
           categories: row.categories
             ? row.categories.split("|").map((item) => item.trim())
             : [],
           status: defaultStatusForSource(input.source),
-          postedAt: row.postedAt ? new Date(row.postedAt) : new Date(),
+          postedAt,
         });
-        imported += 1;
       }
 
+      const existingReviews = await Review.find({
+        tenantId,
+        source: input.source,
+        externalId: { $in: candidates.map((review) => review.externalId) },
+      }).select("externalId");
+      const existingIds = new Set(
+        existingReviews
+          .map((review) => review.externalId)
+          .filter((externalId): externalId is string => Boolean(externalId)),
+      );
+      const newReviews = candidates.filter(
+        (review) => !existingIds.has(review.externalId),
+      );
+      if (newReviews.length > 0) {
+        await Review.insertMany(newReviews);
+      }
+
+      const imported = newReviews.length;
       res.status(201).json(importReviewsResponseSchema.parse({ imported }));
     },
 
@@ -189,11 +236,11 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
             review.reviewerName,
             review.rating,
             review.status,
-            `"${review.content.replaceAll('"', '""')}"`,
+            review.content,
             review.locationName ?? "",
             review.postedAt.toISOString(),
             review.replyText ?? "",
-          ].join(","),
+          ].map(formatCsvField).join(","),
         );
       }
 

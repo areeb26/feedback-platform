@@ -24,8 +24,8 @@ export const overviewSchema = z.object({
 export type Overview = z.infer<typeof overviewSchema>;
 
 export const overviewQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.iso.datetime().optional(),
+  endDate: z.iso.datetime().optional(),
   locationId: z.string().optional(),
   surveyId: z.string().optional(),
 });
