@@ -1,39 +1,58 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { completeGoogleCallback } from "../api/google";
 
 export function GoogleCallbackPage() {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const hasStarted = useRef(false);
   const [message, setMessage] = useState("Completing Google connection...");
 
   useEffect(() => {
-    async function completeConnection() {
-      const params = new URLSearchParams(location.search);
-      const code = params.get("code");
-      const state = params.get("state");
-      const storedState = window.sessionStorage.getItem("google_oauth_state");
-      const slug = window.sessionStorage.getItem("google_oauth_slug");
-      const returnTo = window.sessionStorage.getItem("google_oauth_return_to");
+    if (hasStarted.current) return;
+    hasStarted.current = true;
 
-      if (!code || !state || !storedState || !slug || state !== storedState) {
-        setMessage("Could not verify Google connection state.");
-        return;
-      }
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
+    const oauthError = searchParams.get("error");
+    const expectedState = window.sessionStorage.getItem("google_oauth_state");
+    const slug = window.sessionStorage.getItem("google_oauth_tenant_slug");
 
-      try {
-        await completeGoogleCallback(slug, { code, state });
-        window.sessionStorage.removeItem("google_oauth_state");
-        window.sessionStorage.removeItem("google_oauth_slug");
-        window.sessionStorage.removeItem("google_oauth_return_to");
-        navigate(returnTo ?? `/t/${slug}/reviews`, { replace: true });
-      } catch {
-        setMessage("Could not complete Google connection.");
-      }
+    if (oauthError) {
+      setMessage(`Google authorization failed: ${oauthError}`);
+      return;
+    }
+    if (!code || !state || !slug) {
+      setMessage("Missing Google OAuth callback details.");
+      return;
+    }
+    if (expectedState && expectedState !== state) {
+      setMessage("Google OAuth state did not match. Please try connecting again.");
+      return;
     }
 
-    completeConnection();
-  }, [location.search, navigate]);
+    completeGoogleCallback(slug, { code, state })
+      .then(() => {
+        window.sessionStorage.removeItem("google_oauth_state");
+        window.sessionStorage.removeItem("google_oauth_tenant_slug");
+        navigate(`/t/${slug}/reviews`, { replace: true });
+      })
+      .catch((error) => {
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "Could not complete Google connection.",
+        );
+      });
+  }, [navigate, searchParams]);
 
-  return <div>{message}</div>;
+  const slug = window.sessionStorage.getItem("google_oauth_tenant_slug");
+
+  return (
+    <main style={{ maxWidth: 640, margin: "80px auto", padding: 24 }}>
+      <h1>Google Reviews</h1>
+      <p>{message}</p>
+      {slug ? <Link to={`/t/${slug}/reviews`}>Back to reviews</Link> : null}
+    </main>
+  );
 }

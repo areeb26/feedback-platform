@@ -1,5 +1,6 @@
-import express, { type Request } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { healthResponseSchema } from "@feedback-platform/shared";
+import { ZodError } from "zod";
 import type { ClerkAdminClient } from "./auth/clerkAdmin.js";
 import { createDefaultClerkAdminClient } from "./auth/clerkAdminClient.js";
 import {
@@ -7,6 +8,10 @@ import {
   createNoopGoogleBusinessClient,
   type GoogleBusinessClient,
 } from "./auth/googleBusiness.js";
+import {
+  resolveGooglePlacesClient,
+  type GooglePlacesClient,
+} from "./auth/googlePlaces.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
@@ -21,6 +26,7 @@ export type AppOptions = {
   superAdminUserIds?: string[];
   clerkClient?: ClerkAdminClient;
   googleClient?: GoogleBusinessClient;
+  placesClient?: GooglePlacesClient;
 };
 
 function parseSuperAdminIds(): string[] {
@@ -35,6 +41,7 @@ export function createApp(options: AppOptions = {}) {
   const superAdminUserIds = options.superAdminUserIds ?? parseSuperAdminIds();
   const clerkClient = resolveClerkClient(options);
   const googleClient = resolveGoogleClient(options);
+  const placesClient = resolvePlacesClient(options);
   const app = express();
 
   app.use(express.json());
@@ -54,7 +61,7 @@ export function createApp(options: AppOptions = {}) {
   if (!options.getAuth) {
     tenantRouter.use(clerkMiddleware());
   }
-  tenantRouter.use(createTenantRoutes(getAuth, googleClient));
+  tenantRouter.use(createTenantRoutes(getAuth, googleClient, placesClient));
   app.use("/api/tenant", tenantRouter);
 
   const adminRouter = express.Router();
@@ -64,6 +71,21 @@ export function createApp(options: AppOptions = {}) {
   adminRouter.use(createAdminRoutes(getAuth, superAdminUserIds, clerkClient));
   app.use("/api/admin", adminRouter);
 
+  app.use(
+    (
+      error: unknown,
+      _req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      if (error instanceof ZodError) {
+        res.status(400).json({ error: "Invalid request", details: error.issues });
+        return;
+      }
+      next(error);
+    },
+  );
+
   return app;
 }
 
@@ -71,13 +93,22 @@ function resolveGoogleClient(options: AppOptions): GoogleBusinessClient {
   if (options.googleClient) {
     return options.googleClient;
   }
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+
+  if (clientId && clientSecret && redirectUri) {
     return createDefaultGoogleBusinessClient({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId,
+      clientSecret,
+      redirectUri,
     });
   }
   return createNoopGoogleBusinessClient();
+}
+
+function resolvePlacesClient(options: AppOptions): GooglePlacesClient {
+  return resolveGooglePlacesClient(options.placesClient);
 }
 
 function resolveClerkClient(options: AppOptions): ClerkAdminClient {

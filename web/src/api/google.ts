@@ -1,10 +1,11 @@
 import {
   googleConnectCallbackRequestSchema,
   googleConnectStartRequestSchema,
-  googleConnectionSchema,
   googleConnectStartResponseSchema,
+  googleConnectionSchema,
   googleSyncResponseSchema,
   type GoogleConnection,
+  type GoogleSyncResponse,
 } from "@feedback-platform/shared";
 
 function tenantBase(slug: string) {
@@ -53,7 +54,7 @@ export async function completeGoogleCallback(
   return googleConnectionSchema.parse(await response.json());
 }
 
-export async function syncGoogleReviews(slug: string) {
+export async function syncGoogleReviews(slug: string): Promise<GoogleSyncResponse> {
   const response = await fetch(`${tenantBase(slug)}/google/sync`, {
     method: "POST",
   });

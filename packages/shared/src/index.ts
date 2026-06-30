@@ -13,13 +13,33 @@ export {
 export {
   createLocationRequestSchema,
   locationSchema,
+  tenantFeatureFlagsSchema,
   tenantShellSchema,
   updateLocationRequestSchema,
   type CreateLocationRequest,
   type Location,
+  type TenantFeatureFlags,
   type TenantShell,
   type UpdateLocationRequest,
 } from "./location.js";
+export {
+  competitorAnalyticsCellSchema,
+  competitorAnalyticsColumnSchema,
+  competitorAnalyticsQuerySchema,
+  competitorAnalyticsRowSchema,
+  competitorAnalyticsSchema,
+  competitorRefreshResponseSchema,
+  competitorSchema,
+  createCompetitorRequestSchema,
+  updateCompetitorRequestSchema,
+  PERFORMANCE_CATEGORIES,
+  type Competitor,
+  type CompetitorAnalytics,
+  type CompetitorAnalyticsQuery,
+  type CompetitorRefreshResponse,
+  type CreateCompetitorRequest,
+  type UpdateCompetitorRequest,
+} from "./competitor.js";
 export {
   createSurveyRequestSchema,
   publicSurveySchema,

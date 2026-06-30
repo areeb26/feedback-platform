@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { Location } from "@feedback-platform/shared";
+import type { IncidentAnalyticsQuery, Location } from "@feedback-platform/shared";
 import {
   exportStaffPerformanceCsv,
   fetchIncidentAnalytics,
@@ -19,8 +19,18 @@ function monthRange() {
   };
 }
 
-function toDateInputValue(iso: string) {
-  return iso.slice(0, 10);
+function toDateInputValue(iso?: string) {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+function toFilterDate(value: string, endOfDay = false) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date.toISOString();
 }
 
 function trendColor(value: number) {
@@ -33,11 +43,13 @@ function KpiCard({
   title,
   value,
   trend,
+  trendLabel = formatTrend(trend),
   accent,
 }: {
   title: string;
   value: string;
   trend: number;
+  trendLabel?: string;
   accent: string;
 }) {
   return (
@@ -65,10 +77,16 @@ function KpiCard({
       </div>
       <div style={{ fontSize: 32, fontWeight: 700, marginTop: 8 }}>{value}</div>
       <div style={{ fontSize: 13, color: trendColor(trend), marginTop: 8 }}>
-        {formatTrend(trend)} vs previous period
+        {trendLabel} vs previous period
       </div>
     </div>
   );
+}
+
+function formatDurationTrend(minutes: number) {
+  if (minutes === 0) return "0m";
+  const prefix = minutes > 0 ? "+" : "-";
+  return `${prefix}${formatDuration(Math.abs(minutes))}`;
 }
 
 function NewIncidentsChart({
@@ -303,7 +321,9 @@ export function IncidentAnalyticsPage() {
   const [analytics, setAnalytics] = useState<IncidentAnalytics | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState(() => monthRange());
+  const [filters, setFilters] = useState<IncidentAnalyticsQuery>(() =>
+    monthRange(),
+  );
   const [locationId, setLocationId] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
 
@@ -386,7 +406,7 @@ export function IncidentAnalyticsPage() {
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                startDate: new Date(event.target.value).toISOString(),
+                startDate: toFilterDate(event.target.value),
               }))
             }
           />
@@ -396,14 +416,12 @@ export function IncidentAnalyticsPage() {
           <input
             type="date"
             value={toDateInputValue(filters.endDate)}
-            onChange={(event) => {
-              const end = new Date(event.target.value);
-              end.setHours(23, 59, 59, 999);
+            onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                endDate: end.toISOString(),
-              }));
-            }}
+                endDate: toFilterDate(event.target.value, true),
+              }))
+            }
           />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -455,12 +473,14 @@ export function IncidentAnalyticsPage() {
           title="Avg Review Time"
           value={formatDuration(analytics.avgReviewTimeMinutes)}
           trend={analytics.avgReviewTimeTrend}
+          trendLabel={formatDurationTrend(analytics.avgReviewTimeTrend)}
           accent="#22c55e"
         />
         <KpiCard
           title="Avg Resolve Time"
           value={formatDuration(analytics.avgResolveTimeMinutes)}
           trend={analytics.avgResolveTimeTrend}
+          trendLabel={formatDurationTrend(analytics.avgResolveTimeTrend)}
           accent="#eab308"
         />
       </div>

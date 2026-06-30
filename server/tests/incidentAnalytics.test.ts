@@ -1,5 +1,4 @@
 import request from "supertest";
-import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 import {
   incidentAnalyticsSchema,
@@ -8,6 +7,7 @@ import {
 import { createApp } from "../src/app.js";
 import { Incident } from "../src/models/incident.js";
 import { Submission } from "../src/models/submission.js";
+import { Survey } from "../src/models/survey.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
 
@@ -92,6 +92,7 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
     expect(analytics.staffPerformance).toEqual([
       expect.objectContaining({
         staffMember: "user_1",
+        submissions: 1,
         incidentsCreated: 1,
         reviewed: 1,
         resolved: 1,
@@ -100,7 +101,7 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
     ]);
   });
 
-  it("does not read submission ratings across tenants", async () => {
+  it("does not read linked submission ratings from another tenant", async () => {
     const tenant = await Tenant.create({
       slug: "hafiz-sweets",
       name: "Hafiz Sweets",
@@ -108,21 +109,28 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
       primaryColor: "#7c3aed",
     });
     const otherTenant = await Tenant.create({
-      slug: "other-shop",
-      name: "Other Shop",
+      slug: "other-tenant",
+      name: "Other Tenant",
       clerkOrgId: "org_other",
-      primaryColor: "#2563eb",
+      primaryColor: "#111827",
+    });
+    const otherSurvey = await Survey.create({
+      tenantId: otherTenant._id,
+      name: "Other Survey",
+      previewSlug: "other-survey",
+      questions: defaultQuestions,
     });
     const otherSubmission = await Submission.create({
       tenantId: otherTenant._id,
-      surveyId: new mongoose.Types.ObjectId(),
+      surveyId: otherSurvey._id,
       rating: 1,
       answers: [{ questionId: "q1", value: 1 }],
     });
+
     const incident = await Incident.create({
       tenantId: tenant._id,
       submissionId: otherSubmission._id,
-      code: "INC-CROSS",
+      code: "HAF-999",
       status: "created",
       timeline: [
         { status: "created", at: new Date("2026-06-11T10:00:00.000Z") },
@@ -132,11 +140,11 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
       { _id: incident._id },
       { $set: { createdAt: new Date("2026-06-11T10:00:00.000Z") } },
     );
-    const app = createApp({
+
+    const tenantApp = createApp({
       getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
     });
-
-    const response = await request(app).get(
+    const response = await request(tenantApp).get(
       "/api/tenant/by-slug/hafiz-sweets/analytics/incidents" +
         "?startDate=2026-06-01T00:00:00.000Z&endDate=2026-06-30T23:59:59.999Z",
     );

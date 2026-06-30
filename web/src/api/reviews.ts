@@ -2,6 +2,7 @@ import {
   importReviewsRequestSchema,
   importReviewsResponseSchema,
   replyReviewRequestSchema,
+  reviewListQuerySchema,
   reviewSchema,
   type ImportReviewsRequest,
   type ReplyReviewRequest,
@@ -14,11 +15,22 @@ function tenantBase(slug: string) {
   return `/api/tenant/by-slug/${slug}`;
 }
 
+function reviewSearchParams(query: Record<string, unknown> = {}) {
+  const parsedQuery = reviewListQuerySchema.parse(query);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(parsedQuery)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  return params;
+}
+
 export async function fetchReviews(
   slug: string,
-  query: Record<string, string> = {},
+  query: Record<string, unknown> = {},
 ): Promise<Review[]> {
-  const params = new URLSearchParams(query);
+  const params = reviewSearchParams(query);
   const qs = params.toString();
   const response = await fetch(
     `${tenantBase(slug)}/reviews${qs ? `?${qs}` : ""}`,
@@ -42,7 +54,8 @@ export async function importReviewsCsv(
   if (!response.ok) {
     throw new Error("Failed to import reviews");
   }
-  return importReviewsResponseSchema.parse(await response.json()).imported;
+  const payload = importReviewsResponseSchema.parse(await response.json());
+  return payload.imported;
 }
 
 export async function replyToReview(
@@ -62,8 +75,8 @@ export async function replyToReview(
   return reviewSchema.parse(await response.json());
 }
 
-export function exportReviewsUrl(slug: string, query: Record<string, string> = {}) {
-  const params = new URLSearchParams(query);
+export function exportReviewsUrl(slug: string, query: Record<string, unknown> = {}) {
+  const params = reviewSearchParams(query);
   const qs = params.toString();
   return `${tenantBase(slug)}/reviews/export${qs ? `?${qs}` : ""}`;
 }

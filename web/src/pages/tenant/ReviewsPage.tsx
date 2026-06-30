@@ -118,8 +118,7 @@ export function ReviewsPage() {
     try {
       const { authUrl, state } = await startGoogleConnect(slug);
       window.sessionStorage.setItem("google_oauth_state", state);
-      window.sessionStorage.setItem("google_oauth_slug", slug);
-      window.sessionStorage.setItem("google_oauth_return_to", `/t/${slug}/reviews`);
+      window.sessionStorage.setItem("google_oauth_tenant_slug", slug);
       window.location.href = authUrl;
     } catch {
       setGoogleMessage("Could not start Google connect flow.");
