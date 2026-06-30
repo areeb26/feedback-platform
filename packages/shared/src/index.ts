@@ -41,3 +41,13 @@ export {
   type SubmitSurveyRequest,
   type SubmitSurveyResponse,
 } from "./submission.js";
+export {
+  createIncidentRequestSchema,
+  incidentSchema,
+  incidentTimelineEventSchema,
+  updateIncidentRequestSchema,
+  type CreateIncidentRequest,
+  type Incident,
+  type IncidentTimelineEvent,
+  type UpdateIncidentRequest,
+} from "./incident.js";

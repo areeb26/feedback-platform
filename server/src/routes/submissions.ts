@@ -10,6 +10,7 @@ import { Location } from "../models/location.js";
 import { Submission } from "../models/submission.js";
 import { Survey } from "../models/survey.js";
 import { Tenant } from "../models/tenant.js";
+import { maybeCreateIncidentForSubmission } from "./incidents.js";
 
 function extractRating(
   answers: Array<{ questionId: string; value: string | number }>,
@@ -95,6 +96,14 @@ export function createPublicSubmissionRoutes(): Router {
         customerId: customer._id,
         rating: extractRating(input.answers, survey),
         answers: input.answers,
+      });
+
+      await maybeCreateIncidentForSubmission({
+        tenantId: tenant._id.toString(),
+        tenantName: tenant.name,
+        submissionId: submission._id.toString(),
+        rating: submission.rating ?? undefined,
+        locationId: survey.locationId?.toString(),
       });
 
       res.status(201).json(
