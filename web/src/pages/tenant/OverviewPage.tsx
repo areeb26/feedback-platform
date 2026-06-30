@@ -238,11 +238,15 @@ function RatingBreakdown({
   );
 }
 
-function ThirdPartyReviews() {
-  const sources = [
-    { name: "Google", reviews: 0, rating: 0, trend: 0 },
-    { name: "Food Panda", reviews: 0, rating: 0, trend: 0 },
-  ];
+function ThirdPartyReviews({
+  sources,
+}: {
+  sources: Overview["thirdPartyReviews"];
+}) {
+  const totalReviews = sources.reduce(
+    (sum, source) => sum + source.reviewCount,
+    0,
+  );
 
   return (
     <div
@@ -257,7 +261,7 @@ function ThirdPartyReviews() {
       <div style={{ fontWeight: 600, marginBottom: 16 }}>3rd Party Reviews</div>
       {sources.map((source) => (
         <div
-          key={source.name}
+          key={source.source}
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -268,21 +272,27 @@ function ThirdPartyReviews() {
           <div>
             <div style={{ fontWeight: 500 }}>{source.name}</div>
             <div style={{ fontSize: 13, color: "#6b7280" }}>
-              {source.reviews} reviews
+              {source.reviewCount} reviews
             </div>
+            {source.errorMessage ? (
+              <div style={{ fontSize: 12, color: "#dc2626" }}>
+                {source.errorMessage}
+              </div>
+            ) : null}
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontWeight: 600 }}>{source.rating.toFixed(1)}</div>
+            <div style={{ fontWeight: 600 }}>
+              {source.averageRating.toFixed(1)}
+            </div>
             <div style={{ fontSize: 13, color: trendColor(source.trend) }}>
               {formatTrend(source.trend)}
             </div>
           </div>
         </div>
       ))}
-      <div style={{ fontSize: 13, color: "#6b7280" }}>0 Total Reviews</div>
-      <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 12 }}>
-        Connect Google Business Profile to sync reviews.
-      </p>
+      <div style={{ fontSize: 13, color: "#6b7280" }}>
+        {totalReviews} Total Reviews
+      </div>
     </div>
   );
 }
@@ -504,7 +514,7 @@ export function OverviewPage() {
               total={overview.submissions}
               trend={overview.submissionsTrend}
             />
-            <ThirdPartyReviews />
+            <ThirdPartyReviews sources={overview.thirdPartyReviews} />
           </div>
         </>
       )}

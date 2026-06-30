@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import { overviewQuerySchema, overviewSchema } from "@feedback-platform/shared";
+import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
+import { getThirdPartyReviewSummaries } from "../services/thirdPartyReviews.js";
 import { Incident } from "../models/incident.js";
 import { Submission } from "../models/submission.js";
 import {
@@ -61,7 +63,7 @@ async function loadIncidents(
   return Incident.find(incidentFilter);
 }
 
-export function createOverviewRoutes() {
+export function createOverviewRoutes(googleClient?: GoogleBusinessClient) {
   return {
     async get(req: Request, res: Response) {
       const { start, end, previousStart, previousEnd, filters } = parseRange(
@@ -98,6 +100,10 @@ export function createOverviewRoutes() {
       const previousSmileScore = calculateSmileScore(previousRatings);
       const resolvedPercent = calculateResolvedPercent(incidents);
       const previousResolvedPercent = calculateResolvedPercent(previousIncidents);
+      const thirdPartyReviews = await getThirdPartyReviewSummaries({
+        tenantId,
+        googleClient,
+      });
 
       res.json(
         overviewSchema.parse({
@@ -120,6 +126,7 @@ export function createOverviewRoutes() {
           ),
           targetSmileScore: 100,
           ratingBreakdown: calculateRatingBreakdown(ratings),
+          thirdPartyReviews,
         }),
       );
     },

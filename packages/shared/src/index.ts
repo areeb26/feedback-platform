@@ -92,3 +92,16 @@ export {
   type ReviewAnalytics,
   type ReviewAnalyticsQuery,
 } from "./reviewAnalytics.js";
+export {
+  googleConnectCallbackRequestSchema,
+  googleConnectStartRequestSchema,
+  googleConnectStartResponseSchema,
+  googleConnectionSchema,
+  googleConnectionStatusSchema,
+  googleSyncResponseSchema,
+  thirdPartyReviewSummarySchema,
+  type GoogleConnection,
+  type GoogleConnectionStatus,
+  type GoogleSyncResponse,
+  type ThirdPartyReviewSummary,
+} from "./google.js";

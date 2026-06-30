@@ -3,6 +3,11 @@ import { healthResponseSchema } from "@feedback-platform/shared";
 import { ZodError } from "zod";
 import type { ClerkAdminClient } from "./auth/clerkAdmin.js";
 import { createDefaultClerkAdminClient } from "./auth/clerkAdminClient.js";
+import {
+  createDefaultGoogleBusinessClient,
+  createNoopGoogleBusinessClient,
+  type GoogleBusinessClient,
+} from "./auth/googleBusiness.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
@@ -16,6 +21,7 @@ export type AppOptions = {
   getAuth?: (req: Request) => AuthContext | null;
   superAdminUserIds?: string[];
   clerkClient?: ClerkAdminClient;
+  googleClient?: GoogleBusinessClient;
 };
 
 function parseSuperAdminIds(): string[] {
@@ -29,6 +35,7 @@ export function createApp(options: AppOptions = {}) {
   const getAuth = options.getAuth ?? defaultGetAuth;
   const superAdminUserIds = options.superAdminUserIds ?? parseSuperAdminIds();
   const clerkClient = resolveClerkClient(options);
+  const googleClient = resolveGoogleClient(options);
   const app = express();
 
   app.use(express.json());
@@ -48,7 +55,7 @@ export function createApp(options: AppOptions = {}) {
   if (!options.getAuth) {
     tenantRouter.use(clerkMiddleware());
   }
-  tenantRouter.use(createTenantRoutes(getAuth));
+  tenantRouter.use(createTenantRoutes(getAuth, googleClient));
   app.use("/api/tenant", tenantRouter);
 
   const adminRouter = express.Router();
@@ -74,6 +81,24 @@ export function createApp(options: AppOptions = {}) {
   );
 
   return app;
+}
+
+function resolveGoogleClient(options: AppOptions): GoogleBusinessClient {
+  if (options.googleClient) {
+    return options.googleClient;
+  }
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+
+  if (clientId && clientSecret && redirectUri) {
+    return createDefaultGoogleBusinessClient({
+      clientId,
+      clientSecret,
+      redirectUri,
+    });
+  }
+  return createNoopGoogleBusinessClient();
 }
 
 function resolveClerkClient(options: AppOptions): ClerkAdminClient {

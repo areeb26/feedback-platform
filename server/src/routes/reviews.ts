@@ -15,6 +15,8 @@ import {
   formatCsvField,
   parseReviewCsv,
 } from "../services/reviews.js";
+import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
+import { postGoogleReviewReply } from "../services/googleReviews.js";
 
 const MAX_IMPORT_ROWS = 1000;
 
@@ -29,6 +31,7 @@ function toReviewResponse(review: {
   categories?: string[] | null;
   status: "not_replied" | "replied" | "reply_not_supported";
   replyText?: string | null;
+  externalId?: string | null;
   postedAt: Date;
   createdAt: Date;
 }) {
@@ -48,6 +51,7 @@ function toReviewResponse(review: {
     canReply: canReplyToReview({
       source: review.source,
       status: review.status,
+      externalId: review.externalId,
     }),
   });
 }
@@ -82,7 +86,7 @@ function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function createReviewRoutes() {
+export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
   return {
     async list(req: Request, res: Response) {
       const reviews = await Review.find(
@@ -182,9 +186,31 @@ export function createReviewRoutes() {
         return;
       }
 
-      if (!canReplyToReview({ source: review.source, status: review.status })) {
+      if (
+        !canReplyToReview({
+          source: review.source,
+          status: review.status,
+          externalId: review.externalId,
+        })
+      ) {
         res.status(400).json({ error: "Reply not supported for this review" });
         return;
+      }
+
+      if (review.source === "google" && googleClient) {
+        try {
+          await postGoogleReviewReply({
+            tenantId: req.tenant!.id,
+            reviewExternalId: review.externalId,
+            replyText: input.replyText,
+            client: googleClient,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Google reply failed";
+          res.status(502).json({ error: message });
+          return;
+        }
       }
 
       review.status = "replied";

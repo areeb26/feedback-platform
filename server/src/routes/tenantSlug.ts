@@ -7,6 +7,8 @@ import {
   updateLocationRequestSchema,
 } from "@feedback-platform/shared";
 import type { AuthContext } from "../types.js";
+import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
+import { createNoopGoogleBusinessClient } from "../auth/googleBusiness.js";
 import { attachTenantFromSlug } from "../middleware/attachTenantFromSlug.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { Location } from "../models/location.js";
@@ -19,6 +21,7 @@ import { createOverviewRoutes } from "./overview.js";
 import { createIncidentAnalyticsRoutes } from "./incidentAnalytics.js";
 import { createReviewRoutes } from "./reviews.js";
 import { createReviewAnalyticsRoutes } from "./reviewAnalytics.js";
+import { createGoogleRoutes } from "./google.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -36,6 +39,7 @@ function toLocationResponse(location: {
 
 export function createTenantSlugRoutes(
   getAuth: (req: Request) => AuthContext | null,
+  googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
 ): Router {
   const router = createRouter({ mergeParams: true });
   const guard = [requireAuth(getAuth), attachTenantFromSlug];
@@ -108,7 +112,7 @@ export function createTenantSlugRoutes(
   router.post("/incidents", ...guard, incidentRoutes.create);
   router.patch("/incidents/:incidentId", ...guard, incidentRoutes.update);
 
-  const overviewRoutes = createOverviewRoutes();
+  const overviewRoutes = createOverviewRoutes(googleClient);
   router.get("/overview", ...guard, overviewRoutes.get);
 
   const incidentAnalyticsRoutes = createIncidentAnalyticsRoutes();
@@ -118,7 +122,7 @@ export function createTenantSlugRoutes(
     incidentAnalyticsRoutes.get,
   );
 
-  const reviewRoutes = createReviewRoutes();
+  const reviewRoutes = createReviewRoutes(googleClient);
   router.get("/reviews", ...guard, reviewRoutes.list);
   router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
   router.patch("/reviews/:reviewId/reply", ...guard, reviewRoutes.reply);
@@ -130,6 +134,12 @@ export function createTenantSlugRoutes(
     ...guard,
     reviewAnalyticsRoutes.get,
   );
+
+  const googleRoutes = createGoogleRoutes(googleClient);
+  router.get("/google/status", ...guard, googleRoutes.status);
+  router.post("/google/connect", ...guard, googleRoutes.connect);
+  router.post("/google/callback", ...guard, googleRoutes.callback);
+  router.post("/google/sync", ...guard, googleRoutes.sync);
 
   return router;
 }

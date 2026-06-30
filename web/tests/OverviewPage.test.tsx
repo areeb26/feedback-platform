@@ -20,6 +20,26 @@ const overviewFixture = {
     { stars: 2, count: 0, percent: 0 },
     { stars: 1, count: 1, percent: 50 },
   ],
+  thirdPartyReviews: [
+    {
+      source: "google",
+      name: "Google",
+      reviewCount: 79,
+      averageRating: 4.1,
+      trend: 0,
+      connected: true,
+      errorMessage: null,
+    },
+    {
+      source: "foodpanda",
+      name: "Food Panda",
+      reviewCount: 0,
+      averageRating: 0,
+      trend: 0,
+      connected: false,
+      errorMessage: null,
+    },
+  ],
 };
 
 function OverviewTestLayout() {
