@@ -83,3 +83,12 @@ export {
   type ReviewSource,
   type ReviewStatus,
 } from "./review.js";
+export {
+  listingBreakdownRowSchema,
+  ratingsByDateSchema,
+  reviewAnalyticsQuerySchema,
+  reviewAnalyticsSchema,
+  type ListingBreakdownRow,
+  type ReviewAnalytics,
+  type ReviewAnalyticsQuery,
+} from "./reviewAnalytics.js";
