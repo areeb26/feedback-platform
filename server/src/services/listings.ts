@@ -19,6 +19,7 @@ export async function syncGoogleListings(input: {
   });
 
   let synced = 0;
+  const syncedExternalIds: string[] = [];
 
   for (const listing of listings) {
     let locationId;
@@ -37,15 +38,26 @@ export async function syncGoogleListings(input: {
         externalId: listing.externalId,
       },
       {
-        name: listing.name,
-        rating: listing.rating,
-        reviewCount: listing.reviewCount,
-        locationId,
+        $set: {
+          name: listing.name,
+          rating: listing.rating,
+          reviewCount: listing.reviewCount,
+          locationId: locationId ?? null,
+        },
       },
       { upsert: true },
     );
+    syncedExternalIds.push(listing.externalId);
     synced += 1;
   }
+
+  await Listing.deleteMany({
+    tenantId: input.tenantId,
+    directory: "google",
+    ...(syncedExternalIds.length > 0
+      ? { externalId: { $nin: syncedExternalIds } }
+      : {}),
+  });
 
   return { synced };
 }
@@ -55,7 +67,10 @@ export async function listTenantListings(tenantId: string) {
   return Promise.all(
     listings.map(async (listing) => {
       const location = listing.locationId
-        ? await Location.findById(listing.locationId)
+        ? await Location.findOne({
+            _id: listing.locationId,
+            tenantId,
+          })
         : null;
       return {
         listing,

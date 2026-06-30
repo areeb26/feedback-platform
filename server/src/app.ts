@@ -3,6 +3,7 @@ import { healthResponseSchema } from "@feedback-platform/shared";
 import type { ClerkAdminClient } from "./auth/clerkAdmin.js";
 import { createDefaultClerkAdminClient } from "./auth/clerkAdminClient.js";
 import {
+  createDefaultGoogleBusinessClient,
   createNoopGoogleBusinessClient,
   type GoogleBusinessClient,
 } from "./auth/googleBusiness.js";
@@ -69,6 +70,12 @@ export function createApp(options: AppOptions = {}) {
 function resolveGoogleClient(options: AppOptions): GoogleBusinessClient {
   if (options.googleClient) {
     return options.googleClient;
+  }
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    return createDefaultGoogleBusinessClient({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    });
   }
   return createNoopGoogleBusinessClient();
 }

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { CreateTenantPage } from "./pages/admin/CreateTenantPage";
 import { TenantsPage } from "./pages/admin/TenantsPage";
+import { GoogleCallbackPage } from "./pages/GoogleCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { TenantLayout } from "./layouts/TenantLayout";
 import { IncidentsPage } from "./pages/tenant/IncidentsPage";
@@ -22,6 +23,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/s/:previewSlug" element={<SurveyPreviewPage />} />
+        <Route path="/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="tenants" element={<TenantsPage />} />
           <Route path="tenants/new" element={<CreateTenantPage />} />

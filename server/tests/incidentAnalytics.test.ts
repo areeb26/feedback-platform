@@ -1,4 +1,5 @@
 import request from "supertest";
+import mongoose from "mongoose";
 import { describe, expect, it } from "vitest";
 import {
   incidentAnalyticsSchema,
@@ -6,6 +7,7 @@ import {
 } from "@feedback-platform/shared";
 import { createApp } from "../src/app.js";
 import { Incident } from "../src/models/incident.js";
+import { Submission } from "../src/models/submission.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
 
@@ -95,6 +97,55 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
         resolved: 1,
         percentResolved: 100,
       }),
+    ]);
+  });
+
+  it("does not read submission ratings across tenants", async () => {
+    const tenant = await Tenant.create({
+      slug: "hafiz-sweets",
+      name: "Hafiz Sweets",
+      clerkOrgId: "org_hafiz",
+      primaryColor: "#7c3aed",
+    });
+    const otherTenant = await Tenant.create({
+      slug: "other-shop",
+      name: "Other Shop",
+      clerkOrgId: "org_other",
+      primaryColor: "#2563eb",
+    });
+    const otherSubmission = await Submission.create({
+      tenantId: otherTenant._id,
+      surveyId: new mongoose.Types.ObjectId(),
+      rating: 1,
+      answers: [{ questionId: "q1", value: 1 }],
+    });
+    const incident = await Incident.create({
+      tenantId: tenant._id,
+      submissionId: otherSubmission._id,
+      code: "INC-CROSS",
+      status: "created",
+      timeline: [
+        { status: "created", at: new Date("2026-06-11T10:00:00.000Z") },
+      ],
+    });
+    await Incident.collection.updateOne(
+      { _id: incident._id },
+      { $set: { createdAt: new Date("2026-06-11T10:00:00.000Z") } },
+    );
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+    });
+
+    const response = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/analytics/incidents" +
+        "?startDate=2026-06-01T00:00:00.000Z&endDate=2026-06-30T23:59:59.999Z",
+    );
+
+    expect(response.status).toBe(200);
+    const analytics = incidentAnalyticsSchema.parse(response.body);
+    expect(analytics.totalIncidents).toBe(1);
+    expect(analytics.newIncidentsByDate).toEqual([
+      { date: "2026-06-11", oneStar: 0, twoStar: 0, threeStar: 0 },
     ]);
   });
 });

@@ -16,6 +16,10 @@ import {
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { postGoogleReviewReply } from "../services/googleReviews.js";
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function toReviewResponse(review: {
   _id: { toString(): string };
   source: "google" | "foodpanda";
@@ -57,13 +61,14 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   if (filters.directory) mongoFilter.source = filters.directory;
   if (filters.rating) mongoFilter.rating = filters.rating;
   if (filters.listing) {
+    const listing = escapeRegex(filters.listing);
     mongoFilter.$or = [
-      { locationName: { $regex: filters.listing, $options: "i" } },
-      { listingName: { $regex: filters.listing, $options: "i" } },
+      { locationName: { $regex: listing, $options: "i" } },
+      { listingName: { $regex: listing, $options: "i" } },
     ];
   }
   if (filters.content) {
-    mongoFilter.content = { $regex: filters.content, $options: "i" };
+    mongoFilter.content = { $regex: escapeRegex(filters.content), $options: "i" };
   }
   if (filters.startDate || filters.endDate) {
     mongoFilter.postedAt = {

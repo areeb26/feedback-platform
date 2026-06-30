@@ -1,5 +1,6 @@
 import {
   importReviewsRequestSchema,
+  importReviewsResponseSchema,
   replyReviewRequestSchema,
   reviewSchema,
   type ImportReviewsRequest,
@@ -41,8 +42,7 @@ export async function importReviewsCsv(
   if (!response.ok) {
     throw new Error("Failed to import reviews");
   }
-  const payload = await response.json();
-  return payload.imported as number;
+  return importReviewsResponseSchema.parse(await response.json()).imported;
 }
 
 export async function replyToReview(

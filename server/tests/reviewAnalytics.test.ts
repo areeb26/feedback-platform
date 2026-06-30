@@ -2,6 +2,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { reviewAnalyticsSchema } from "@feedback-platform/shared";
 import { createApp } from "../src/app.js";
+import { Location } from "../src/models/location.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
 
@@ -13,11 +14,21 @@ Izhan,5,Great food,Hafiz Sweets - Saudabad,2026-06-30T13:50:00.000Z
 Bilal Ahmed,1,Poor service,Hafiz Sweets,2026-06-29T10:00:00.000Z`;
 
 async function seedReviews() {
-  await Tenant.create({
+  const tenant = await Tenant.create({
     slug: "hafiz-sweets",
     name: "Hafiz Sweets",
     clerkOrgId: "org_hafiz",
     primaryColor: "#7c3aed",
+  });
+  await Location.create({
+    tenantId: tenant._id,
+    name: "Hafiz Sweets",
+    labels: ["Karachi", "Flagship"],
+  });
+  await Location.create({
+    tenantId: tenant._id,
+    name: "Hafiz Sweets - Saudabad",
+    labels: ["Karachi"],
   });
 
   const app = createApp({
@@ -55,6 +66,18 @@ describe("GET /api/tenant/by-slug/:slug/analytics/reviews", () => {
         expect.objectContaining({
           listingName: "Hafiz Sweets - Saudabad",
           reviews: 1,
+        }),
+      ]),
+    );
+    expect(analytics.labelsBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          listingName: "Karachi",
+          reviews: 3,
+        }),
+        expect.objectContaining({
+          listingName: "Flagship",
+          reviews: 2,
         }),
       ]),
     );

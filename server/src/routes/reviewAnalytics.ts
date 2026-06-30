@@ -6,6 +6,7 @@ import {
 import { Location } from "../models/location.js";
 import { Review } from "../models/review.js";
 import {
+  buildLabelBreakdown,
   buildListingBreakdown,
   buildRatingsByDate,
   calculateAverageRating,
@@ -13,6 +14,10 @@ import {
   calculateReplyRate,
   calculateTrend,
 } from "../services/reviewAnalytics.js";
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 function parseRange(query: Record<string, unknown>) {
   const filters = reviewAnalyticsQuerySchema.parse(query);
@@ -44,9 +49,10 @@ async function loadReviews(
 
   if (filters.directory) mongoFilter.source = filters.directory;
   if (filters.listing) {
+    const listing = escapeRegex(filters.listing);
     mongoFilter.$or = [
-      { locationName: { $regex: filters.listing, $options: "i" } },
-      { listingName: { $regex: filters.listing, $options: "i" } },
+      { locationName: { $regex: listing, $options: "i" } },
+      { listingName: { $regex: listing, $options: "i" } },
     ];
   }
 
@@ -55,7 +61,7 @@ async function loadReviews(
   if (filters.label) {
     const locations = await Location.find({
       tenantId,
-      labels: { $regex: filters.label, $options: "i" },
+      labels: { $regex: escapeRegex(filters.label), $options: "i" },
     });
     const locationNames = new Set(locations.map((location) => location.name));
     reviews = reviews.filter(
@@ -75,6 +81,7 @@ function summarize(
     listingName?: string | null;
     locationName?: string | null;
   }>,
+  labelsByLocationName: Map<string, string[]>,
 ) {
   const ratings = reviews.map((review) => review.rating);
   const repliedCount = reviews.filter(
@@ -91,7 +98,7 @@ function summarize(
     positiveReviewsCount,
     ratingsByDate: buildRatingsByDate(reviews),
     listingsBreakdown: buildListingBreakdown(reviews),
-    labelsBreakdown: buildListingBreakdown(reviews),
+    labelsBreakdown: buildLabelBreakdown(reviews, labelsByLocationName),
   };
 }
 
@@ -111,9 +118,13 @@ export function createReviewAnalyticsRoutes() {
           filters,
         ),
       ]);
+      const locations = await Location.find({ tenantId });
+      const labelsByLocationName = new Map(
+        locations.map((location) => [location.name, location.labels ?? []]),
+      );
 
-      const current = summarize(currentReviews);
-      const previous = summarize(previousReviews);
+      const current = summarize(currentReviews, labelsByLocationName);
+      const previous = summarize(previousReviews, labelsByLocationName);
 
       res.json(
         reviewAnalyticsSchema.parse({
