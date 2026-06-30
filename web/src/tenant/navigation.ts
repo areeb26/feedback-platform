@@ -13,7 +13,10 @@ export type NavSection = {
 
 export function tenantNavSections(
   slug: string,
-  featureFlags?: { competitorAnalytics?: boolean },
+  featureFlags?: {
+    competitorAnalytics?: boolean;
+    socialListening?: boolean;
+  },
 ): NavSection[] {
   const base = `/t/${slug}`;
   const reputationItems: NavItem[] = [
@@ -29,10 +32,12 @@ export function tenantNavSections(
     });
   }
 
-  reputationItems.push({
-    label: "Social Listening",
-    path: `${base}/social-listening`,
-  });
+  if (featureFlags?.socialListening) {
+    reputationItems.push({
+      label: "Social Listening",
+      path: `${base}/social-listening`,
+    });
+  }
 
   return [
     {
