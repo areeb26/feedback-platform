@@ -108,3 +108,53 @@ export function buildListingBreakdown(
       };
     });
 }
+
+export function buildLabelBreakdown(
+  reviews: Array<{
+    locationName?: string | null;
+    rating: number;
+    status: string;
+  }>,
+  labelsByLocationName: Map<string, string[]>,
+) {
+  const byLabel = new Map<string, Array<{ rating: number; status: string }>>();
+
+  for (const review of reviews) {
+    const labels = review.locationName
+      ? labelsByLocationName.get(review.locationName)
+      : undefined;
+    const labelNames = labels && labels.length > 0 ? labels : ["Unlabeled"];
+
+    for (const label of labelNames) {
+      const bucket = byLabel.get(label) ?? [];
+      bucket.push({ rating: review.rating, status: review.status });
+      byLabel.set(label, bucket);
+    }
+  }
+
+  return [...byLabel.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([listingName, rows]) => {
+      const ratings = rows.map((row) => row.rating);
+      const positiveCount = ratings.filter((rating) => rating >= 4).length;
+      const negativeCount = ratings.length - positiveCount;
+
+      return {
+        listingName,
+        reviews: rows.length,
+        rating: calculateAverageRating(ratings),
+        positivePercent:
+          rows.length === 0
+            ? 0
+            : Math.round((positiveCount / rows.length) * 1000) / 10,
+        positiveCount,
+        negativePercent:
+          rows.length === 0
+            ? 0
+            : Math.round((negativeCount / rows.length) * 1000) / 10,
+        negativeCount,
+        replyRate: calculateReplyRate(rows),
+        repliedCount: rows.filter((row) => row.status === "replied").length,
+      };
+    });
+}
