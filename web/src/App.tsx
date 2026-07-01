@@ -26,6 +26,7 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/s/:previewSlug" element={<SurveyPreviewPage />} />
+        <Route path="/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="tenants" element={<TenantsPage />} />
           <Route path="tenants/new" element={<CreateTenantPage />} />

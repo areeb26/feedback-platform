@@ -1,4 +1,8 @@
-import { listingSchema, type Listing } from "@feedback-platform/shared";
+import {
+  listingSchema,
+  listingSyncResponseSchema,
+  type Listing,
+} from "@feedback-platform/shared";
 
 const listingListSchema = listingSchema.array();
 
@@ -22,7 +26,7 @@ export async function syncListings(slug: string) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error ?? "Failed to sync listings");
   }
-  return response.json() as Promise<{ synced: number }>;
+  return listingSyncResponseSchema.parse(await response.json());
 }
 
 export function directoryLabel(directory: Listing["directory"]) {
