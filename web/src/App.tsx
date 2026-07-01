@@ -1,9 +1,10 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { CreateTenantPage } from "./pages/admin/CreateTenantPage";
 import { TenantsPage } from "./pages/admin/TenantsPage";
 import { GoogleCallbackPage } from "./pages/GoogleCallbackPage";
 import { HomePage } from "./pages/HomePage";
+import { TenantGatePage } from "./pages/TenantGatePage";
 import { TenantLayout } from "./layouts/TenantLayout";
 import { IncidentsPage } from "./pages/tenant/IncidentsPage";
 import { LocationsPage } from "./pages/tenant/LocationsPage";
@@ -18,6 +19,7 @@ import { SocialListeningPage } from "./pages/tenant/SocialListeningPage";
 import { AutoReplyRulesPage } from "./pages/tenant/AutoReplyRulesPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 export function App() {
   return (
@@ -26,35 +28,37 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/s/:previewSlug" element={<SurveyPreviewPage />} />
-        <Route path="/google/callback" element={<GoogleCallbackPage />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="tenants" element={<TenantsPage />} />
           <Route path="tenants/new" element={<CreateTenantPage />} />
         </Route>
-        <Route path="/t/:slug" element={<TenantLayout />}>
-          <Route index element={<Navigate to="overview" replace />} />
-          <Route path="overview" element={<OverviewPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="incidents" element={<IncidentsPage />} />
-          <Route
-            path="analytics/incidents"
-            element={<IncidentAnalyticsPage />}
-          />
-          <Route path="listings" element={<ListingsPage />} />
-          <Route path="reviews" element={<ReviewsPage />} />
-          <Route
-            path="analytics/reviews"
-            element={<ReviewAnalyticsPage />}
-          />
-          <Route
-            path="analytics/competitors"
-            element={<CompetitorAnalyticsPage />}
-          />
-          <Route path="social-listening" element={<SocialListeningPage />} />
-          <Route path="auto-reply-rules" element={<AutoReplyRulesPage />} />
-          <Route path="surveys" element={<SurveysPage />} />
-          <Route path="settings" element={<LocationsPage />} />
+        <Route path="/t/:slug">
+          <Route index element={<TenantGatePage />} />
+          <Route element={<TenantLayout />}>
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="customers" element={<CustomersPage />} />
+            <Route path="incidents" element={<IncidentsPage />} />
+            <Route
+              path="analytics/incidents"
+              element={<IncidentAnalyticsPage />}
+            />
+            <Route path="listings" element={<ListingsPage />} />
+            <Route path="reviews" element={<ReviewsPage />} />
+            <Route
+              path="analytics/reviews"
+              element={<ReviewAnalyticsPage />}
+            />
+            <Route
+              path="analytics/competitors"
+              element={<CompetitorAnalyticsPage />}
+            />
+            <Route path="social-listening" element={<SocialListeningPage />} />
+            <Route path="auto-reply-rules" element={<AutoReplyRulesPage />} />
+            <Route path="surveys" element={<SurveysPage />} />
+            <Route path="settings" element={<LocationsPage />} />
+          </Route>
         </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
