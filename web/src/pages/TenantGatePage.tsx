@@ -27,47 +27,24 @@ async function canAccessTenantShell(slug: string) {
   }
 }
 
-export function TenantGatePage() {
-  const { slug = "" } = useParams();
+type ReadyBranding = Extract<GateState, { kind: "ready" }>["branding"];
+
+function TenantGateAccessFlow({
+  slug,
+  branding,
+}: {
+  slug: string;
+  branding: ReadyBranding;
+}) {
   const navigate = useNavigate();
-  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { isLoaded: orgsLoaded, setActive, userMemberships } =
     useOrganizationList({
       userMemberships: { infinite: true },
     });
-  const [state, setState] = useState<GateState>({ kind: "loading" });
   const [accessState, setAccessState] = useState<AccessState>("idle");
 
   useEffect(() => {
-    let cancelled = false;
-    setState({ kind: "loading" });
-    setAccessState("idle");
-
-    fetchTenantPublicBranding(slug)
-      .then((branding) => {
-        if (!cancelled) {
-          setState({ kind: "ready", branding });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setState({ kind: "not-found" });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [slug]);
-
-  useEffect(() => {
-    if (
-      !authLoaded ||
-      !orgsLoaded ||
-      !isSignedIn ||
-      state.kind !== "ready" ||
-      state.branding.status !== "active"
-    ) {
+    if (!orgsLoaded || branding.status !== "active") {
       return;
     }
 
@@ -100,16 +77,62 @@ export function TenantGatePage() {
     return () => {
       cancelled = true;
     };
-  }, [
-    authLoaded,
-    isSignedIn,
-    navigate,
-    orgsLoaded,
-    setActive,
-    slug,
-    state,
-    userMemberships.data,
-  ]);
+  }, [branding.status, navigate, orgsLoaded, setActive, slug, userMemberships.data]);
+
+  if (branding.status === "suspended") {
+    return (
+      <p className="tenant-gate__text tenant-gate__text--paused">
+        This workspace has been paused. Contact your agency to restore access.
+      </p>
+    );
+  }
+
+  if (accessState === "checking") {
+    return <p className="tenant-gate__text">Opening your dashboard…</p>;
+  }
+
+  if (accessState === "denied") {
+    return (
+      <>
+        <p className="tenant-gate__text">
+          You are signed in to the wrong workspace. Switch organization or sign
+          out, then try again.
+        </p>
+        <div className="tenant-gate__recovery">
+          <OrganizationSwitcher hidePersonal />
+        </div>
+      </>
+    );
+  }
+
+  return null;
+}
+
+export function TenantGatePage() {
+  const { slug = "" } = useParams();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
+  const [state, setState] = useState<GateState>({ kind: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ kind: "loading" });
+
+    fetchTenantPublicBranding(slug)
+      .then((branding) => {
+        if (!cancelled) {
+          setState({ kind: "ready", branding });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setState({ kind: "not-found" });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   if (state.kind === "loading") {
     return <div className="tenant-gate">Loading…</div>;
@@ -130,6 +153,7 @@ export function TenantGatePage() {
 
   const { branding } = state;
   const isSuspended = branding.status === "suspended";
+  const showSignedInFlow = authLoaded && isSignedIn && !isSuspended;
 
   return (
     <div
@@ -156,23 +180,13 @@ export function TenantGatePage() {
           <h1 className="tenant-gate__title">{branding.name}</h1>
         </header>
 
-        {isSuspended ? (
+        {showSignedInFlow ? (
+          <TenantGateAccessFlow slug={slug} branding={branding} />
+        ) : isSuspended ? (
           <p className="tenant-gate__text tenant-gate__text--paused">
             This workspace has been paused. Contact your agency to restore
             access.
           </p>
-        ) : accessState === "checking" ? (
-          <p className="tenant-gate__text">Opening your dashboard…</p>
-        ) : accessState === "denied" ? (
-          <>
-            <p className="tenant-gate__text">
-              You are signed in to the wrong workspace. Switch organization or
-              sign out, then try again.
-            </p>
-            <div className="tenant-gate__recovery">
-              <OrganizationSwitcher hidePersonal />
-            </div>
-          </>
         ) : (
           <>
             <p className="tenant-gate__text">
