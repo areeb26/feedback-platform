@@ -15,9 +15,9 @@ ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/package.json
-COPY packages/shared/dist packages/shared/dist
+COPY --from=build /app/packages/shared/dist packages/shared/dist
 COPY server/package.json server/package.json
-COPY server/dist server/dist
+COPY --from=build /app/server/dist server/dist
 
 RUN npm ci --omit=dev --workspace=server --workspace=packages/shared
 
