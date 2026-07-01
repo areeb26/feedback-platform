@@ -3,19 +3,31 @@ services:
     build:
       context: .
       dockerfile: server/Dockerfile
+    env_file:
+      - path: .env
+        required: false
     environment:
       PORT: 3001
+      NODE_ENV: production
     expose:
       - "3001"
     restart: unless-stopped
 
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    image: feedback-platform-web
+
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: docker/nginx.Dockerfile
+      args:
+        WEB_IMAGE: feedback-platform-web
     ports:
       - "8080:80"
-    volumes:
-      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./web/dist:/usr/share/nginx/html:ro
     depends_on:
       - api
+      - web
     restart: unless-stopped

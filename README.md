@@ -43,14 +43,34 @@ npm test
 
 ## Docker (local)
 
+Build and run the full stack without a host-side `npm run build`:
+
 ```bash
-cp .env.example .env
-npm run build
-docker compose config   # validate compose file
-docker compose up --build
+cp .env.example .env   # edit with real values for API
+docker compose config  # validate compose file
+docker compose up --build -d
 ```
 
-Open http://localhost:8080
+Open http://localhost:8080 — nginx serves the React build and proxies `/api/*` to the API container.
+
+## Deployment
+
+Production deploys to a Contabo VPS via Docker Compose and GitHub Actions (push to `main`).
+
+| Component | Path |
+|-----------|------|
+| Compose (local) | `docker-compose.yml` |
+| Compose (production + SSL) | `docker-compose.prod.yml` |
+| Deploy workflow | `.github/workflows/deploy.yml` |
+| Full guide | [docs/deploy/contabo.md](docs/deploy/contabo.md) |
+
+GitHub repository secrets required: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`.
+
+Manual deploy on the server:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml ./scripts/deploy.sh
+```
 
 ## Monorepo layout
 
