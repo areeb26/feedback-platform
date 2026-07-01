@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import type { Review } from "@feedback-platform/shared";
+import { useOutletContext, useParams } from "react-router-dom";
+import type { Review, TenantShell } from "@feedback-platform/shared";
 import {
   exportReviewsUrl,
   fetchReviews,
@@ -10,12 +10,21 @@ import {
   reviewStatusLabel,
   sourceLabel,
 } from "../../api/reviews";
+import { generateReviewReplies } from "../../api/aiReplies";
 import {
   fetchGoogleConnection,
   startGoogleConnect,
   syncGoogleReviews,
   type GoogleConnection,
 } from "../../api/google";
+
+type OutletContext = { shell: TenantShell };
+
+type DraftReply = {
+  reviewId: string;
+  reviewerName: string;
+  draftReply: string;
+};
 
 function statusBadgeStyle(status: Review["status"]) {
   if (status === "replied") {
@@ -45,11 +54,15 @@ function Stars({ rating }: { rating: number }) {
 
 export function ReviewsPage() {
   const { slug = "" } = useParams();
+  const { shell } = useOutletContext<OutletContext>();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [replyingId, setReplyingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<DraftReply[] | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [postingDraftId, setPostingDraftId] = useState<string | null>(null);
   const [directory, setDirectory] = useState("");
   const [rating, setRating] = useState("");
   const [listing, setListing] = useState("");
@@ -143,6 +156,62 @@ export function ReviewsPage() {
     }
   }
 
+  const selectedUnrepliedIds = selectedIds.filter((id) =>
+    reviews.some(
+      (review) => review.id === id && review.status === "not_replied",
+    ),
+  );
+
+  async function handleGenerateReplies() {
+    if (selectedUnrepliedIds.length === 0) return;
+    setGenerateError(null);
+    try {
+      const result = await generateReviewReplies(slug, {
+        reviewIds: selectedUnrepliedIds,
+      });
+      const mapped = result.drafts.map((draft) => {
+        const review = reviews.find((row) => row.id === draft.reviewId);
+        return {
+          reviewId: draft.reviewId,
+          reviewerName: review?.reviewerName ?? "Customer",
+          draftReply: draft.draftReply,
+        };
+      });
+      setDrafts(mapped);
+    } catch (generateErr) {
+      setGenerateError(
+        generateErr instanceof Error
+          ? generateErr.message
+          : "Could not generate replies",
+      );
+    }
+  }
+
+  function updateDraftReply(reviewId: string, text: string) {
+    setDrafts((current) =>
+      current?.map((draft) =>
+        draft.reviewId === reviewId ? { ...draft, draftReply: text } : draft,
+      ) ?? null,
+    );
+  }
+
+  async function handlePostDraft(reviewId: string, text: string) {
+    if (!text.trim()) return;
+    setPostingDraftId(reviewId);
+    try {
+      await replyToReview(slug, reviewId, { replyText: text.trim() });
+      setDrafts((current) =>
+        current?.filter((draft) => draft.reviewId !== reviewId) ?? null,
+      );
+      setSelectedIds((current) => current.filter((id) => id !== reviewId));
+      await loadReviews();
+    } catch {
+      setGenerateError("Could not post reply. Check Google connection.");
+    } finally {
+      setPostingDraftId(null);
+    }
+  }
+
   if (error) {
     return <div>{error}</div>;
   }
@@ -223,6 +292,11 @@ export function ReviewsPage() {
         <button type="button" onClick={selectAllUnreplied}>
           Select all unreplied
         </button>
+        {shell.featureFlags.aiReplies && selectedUnrepliedIds.length > 0 ? (
+          <button type="button" onClick={handleGenerateReplies}>
+            Generate Replies
+          </button>
+        ) : null}
         <select
           value={directory}
           onChange={(event) => setDirectory(event.target.value)}
@@ -255,6 +329,70 @@ export function ReviewsPage() {
           onChange={(event) => setContent(event.target.value)}
         />
       </div>
+
+      {generateError ? (
+        <div style={{ marginBottom: 16, color: "#b91c1c" }}>{generateError}</div>
+      ) : null}
+
+      {drafts && drafts.length > 0 ? (
+        <div
+          style={{
+            marginBottom: 24,
+            padding: 16,
+            border: "1px solid #dbeafe",
+            borderRadius: 12,
+            background: "#eff6ff",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 18 }}>Generated reply drafts</h2>
+            <button type="button" onClick={() => setDrafts(null)}>
+              Close
+            </button>
+          </div>
+          <div style={{ display: "grid", gap: 16 }}>
+            {drafts.map((draft) => (
+              <div
+                key={draft.reviewId}
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  {draft.reviewerName}
+                </div>
+                <textarea
+                  value={draft.draftReply}
+                  onChange={(event) =>
+                    updateDraftReply(draft.reviewId, event.target.value)
+                  }
+                  rows={3}
+                  style={{ width: "100%", marginBottom: 8 }}
+                />
+                <button
+                  type="button"
+                  disabled={postingDraftId === draft.reviewId}
+                  onClick={() =>
+                    handlePostDraft(draft.reviewId, draft.draftReply)
+                  }
+                >
+                  {postingDraftId === draft.reviewId ? "Posting..." : "Post reply"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {reviews.length === 0 ? (
         <div

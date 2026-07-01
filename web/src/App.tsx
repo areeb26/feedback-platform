@@ -15,6 +15,7 @@ import { ReviewAnalyticsPage } from "./pages/tenant/ReviewAnalyticsPage";
 import { ListingsPage } from "./pages/tenant/ListingsPage";
 import { CompetitorAnalyticsPage } from "./pages/tenant/CompetitorAnalyticsPage";
 import { SocialListeningPage } from "./pages/tenant/SocialListeningPage";
+import { AutoReplyRulesPage } from "./pages/tenant/AutoReplyRulesPage";
 import { SurveyPreviewPage } from "./pages/public/SurveyPreviewPage";
 import { SurveysPage } from "./pages/tenant/SurveysPage";
 
@@ -50,6 +51,7 @@ export function App() {
             element={<CompetitorAnalyticsPage />}
           />
           <Route path="social-listening" element={<SocialListeningPage />} />
+          <Route path="auto-reply-rules" element={<AutoReplyRulesPage />} />
           <Route path="surveys" element={<SurveysPage />} />
           <Route path="settings" element={<LocationsPage />} />
         </Route>

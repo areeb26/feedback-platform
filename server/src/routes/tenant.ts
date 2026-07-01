@@ -6,6 +6,8 @@ import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { createNoopGoogleBusinessClient } from "../auth/googleBusiness.js";
 import type { GooglePlacesClient } from "../auth/googlePlaces.js";
 import { createNoopGooglePlacesClient } from "../auth/googlePlaces.js";
+import type { OpenAiClient } from "../auth/openai.js";
+import { createNoopOpenAiClient } from "../auth/openai.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { requireTenantSlug } from "../middleware/requireTenantSlug.js";
 import { resolveTenant } from "../middleware/resolveTenant.js";
@@ -15,6 +17,7 @@ export function createTenantRoutes(
   getAuth: (req: Request) => AuthContext | null,
   googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
   placesClient: GooglePlacesClient = createNoopGooglePlacesClient(),
+  openAiClient: OpenAiClient = createNoopOpenAiClient(),
 ): Router {
   const router = createRouter();
 
@@ -44,7 +47,7 @@ export function createTenantRoutes(
     },
   );
 
-  router.use("/by-slug/:slug", createTenantSlugRoutes(getAuth, googleClient, placesClient));
+  router.use("/by-slug/:slug", createTenantSlugRoutes(getAuth, googleClient, placesClient, openAiClient));
 
   return router;
 }

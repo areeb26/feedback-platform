@@ -16,6 +16,7 @@ export function tenantNavSections(
   featureFlags?: {
     competitorAnalytics?: boolean;
     socialListening?: boolean;
+    aiReplies?: boolean;
   },
 ): NavSection[] {
   const base = `/t/${slug}`;
@@ -39,6 +40,18 @@ export function tenantNavSections(
     });
   }
 
+  const platformItems: NavItem[] = [
+    { label: "Surveys", path: `${base}/surveys` },
+    { label: "Settings", path: `${base}/settings` },
+  ];
+
+  if (featureFlags?.aiReplies) {
+    platformItems.unshift({
+      label: "Auto Reply Rules",
+      path: `${base}/auto-reply-rules`,
+    });
+  }
+
   return [
     {
       title: "Feedback",
@@ -55,10 +68,7 @@ export function tenantNavSections(
     },
     {
       title: "Platform",
-      items: [
-        { label: "Surveys", path: `${base}/surveys` },
-        { label: "Settings", path: `${base}/settings` },
-      ],
+      items: platformItems,
     },
   ];
 }

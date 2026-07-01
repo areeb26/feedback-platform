@@ -1,8 +1,26 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
+import type { TenantShell } from "@feedback-platform/shared";
 import { ReviewsPage } from "../src/pages/tenant/ReviewsPage";
+
+const shell: TenantShell = {
+  slug: "hafiz-sweets",
+  name: "Hafiz Sweets",
+  logoUrl: null,
+  primaryColor: "#7c3aed",
+  featureFlags: {
+    socialListening: false,
+    competitorAnalytics: false,
+    aiReplies: true,
+    googleReviews: false,
+  },
+};
+
+function ShellLayout() {
+  return <Outlet context={{ shell }} />;
+}
 
 const reviewsFixture = [
   {
@@ -38,9 +56,27 @@ const reviewsFixture = [
 ];
 
 describe("ReviewsPage", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
   it("shows review cards with statuses and supports reply", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/google/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "disconnected",
+            accountId: null,
+            reviewCount: 0,
+            averageRating: 0,
+            errorMessage: null,
+            connectedAt: null,
+          }),
+        });
+      }
       if (url.includes("/reviews/export")) {
         return Promise.resolve({ ok: true, text: async () => "csv" });
       }
@@ -68,7 +104,9 @@ describe("ReviewsPage", () => {
     render(
       <MemoryRouter initialEntries={["/t/hafiz-sweets/reviews"]}>
         <Routes>
-          <Route path="/t/:slug/reviews" element={<ReviewsPage />} />
+          <Route path="/t/:slug" element={<ShellLayout />}>
+            <Route path="reviews" element={<ReviewsPage />} />
+          </Route>
         </Routes>
       </MemoryRouter>,
     );
@@ -88,6 +126,67 @@ describe("ReviewsPage", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tenant/by-slug/hafiz-sweets/reviews/rev_1/reply",
       expect.objectContaining({ method: "PATCH" }),
+    );
+  });
+
+  it("generates draft replies for selected unreplied reviews", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/google/status")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            status: "disconnected",
+            accountId: null,
+            reviewCount: 0,
+            averageRating: 0,
+            errorMessage: null,
+            connectedAt: null,
+          }),
+        });
+      }
+      if (url.includes("/reviews/generate-replies") && init?.method === "POST") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            drafts: [
+              {
+                reviewId: "rev_1",
+                draftReply: "Thanks for sharing your feedback!",
+              },
+            ],
+          }),
+        });
+      }
+      if (url.includes("/reviews")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => reviewsFixture,
+        });
+      }
+      return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={["/t/hafiz-sweets/reviews"]}>
+        <Routes>
+          <Route path="/t/:slug" element={<ShellLayout />}>
+            <Route path="reviews" element={<ReviewsPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText("kashif shah");
+    await user.click(screen.getByRole("button", { name: "Select all unreplied" }));
+    await user.click(screen.getByRole("button", { name: "Generate Replies" }));
+
+    expect(await screen.findByText("Generated reply drafts")).toBeTruthy();
+    expect(screen.getByDisplayValue("Thanks for sharing your feedback!")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tenant/by-slug/hafiz-sweets/reviews/generate-replies",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 });

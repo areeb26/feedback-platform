@@ -1,6 +1,7 @@
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { GoogleConnection } from "../models/googleConnection.js";
 import { Review } from "../models/review.js";
+import { applyAutoReplyRules } from "./autoReplyRules.js";
 
 type PersistedGoogleConnection = {
   _id: { toString(): string };
@@ -59,36 +60,41 @@ export async function syncGoogleReviews(input: {
   let imported = 0;
   let updated = 0;
 
-  for (const review of reviews) {
+  for (const incoming of reviews) {
     const existing = await Review.findOne({
       tenantId: input.tenantId,
       source: "google",
-      externalId: review.externalId,
+      externalId: incoming.externalId,
     });
 
     if (existing) {
-      existing.reviewerName = review.reviewerName;
-      existing.rating = review.rating;
-      existing.content = review.content;
-      existing.locationName = review.locationName;
-      existing.listingName = review.locationName;
-      existing.postedAt = review.postedAt;
+      existing.reviewerName = incoming.reviewerName;
+      existing.rating = incoming.rating;
+      existing.content = incoming.content;
+      existing.locationName = incoming.locationName;
+      existing.listingName = incoming.locationName;
+      existing.postedAt = incoming.postedAt;
       await existing.save();
       updated += 1;
       continue;
     }
 
-    await Review.create({
+    const createdReview = await Review.create({
       tenantId: input.tenantId,
       source: "google",
-      externalId: review.externalId,
-      reviewerName: review.reviewerName,
-      rating: review.rating,
-      content: review.content,
-      locationName: review.locationName,
-      listingName: review.locationName,
+      externalId: incoming.externalId,
+      reviewerName: incoming.reviewerName,
+      rating: incoming.rating,
+      content: incoming.content,
+      locationName: incoming.locationName,
+      listingName: incoming.locationName,
       status: "not_replied",
-      postedAt: review.postedAt,
+      postedAt: incoming.postedAt,
+    });
+    await applyAutoReplyRules({
+      tenantId: input.tenantId,
+      review: createdReview,
+      googleClient: input.client,
     });
     imported += 1;
   }
