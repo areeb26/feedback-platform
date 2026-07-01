@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useParams } from "react-router-dom";
+import { NavLink, Navigate, Outlet, useParams } from "react-router-dom";
+import { UserButton } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { fetchTenantShell, type TenantShell } from "../api/tenant";
 import { SUPPORT_WHATSAPP_URL, tenantNavSections } from "../tenant/navigation";
@@ -15,7 +16,7 @@ export function TenantLayout() {
   }, [slug]);
 
   if (error) {
-    return <div>{error}</div>;
+    return <Navigate to={`/t/${slug}`} replace />;
   }
 
   if (!shell) {
@@ -101,6 +102,7 @@ export function TenantLayout() {
           <a href={SUPPORT_WHATSAPP_URL} target="_blank" rel="noreferrer">
             Contact Support
           </a>
+          <UserButton afterSignOutUrl="/" />
         </header>
         <main style={{ padding: 32, flex: 1 }}>
           <Outlet context={{ shell }} />
