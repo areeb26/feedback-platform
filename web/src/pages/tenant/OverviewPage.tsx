@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext, useParams } from "react-router-dom";
-import type { Location, TenantShell } from "@feedback-platform/shared";
+import type { Location, OverviewQuery, TenantShell } from "@feedback-platform/shared";
 import { fetchOverview, formatTrend, type Overview } from "../../api/overview";
 import { fetchLocations } from "../../api/tenant";
 import { fetchSurveys, type Survey } from "../../api/surveys";
@@ -18,8 +18,18 @@ function monthRange() {
   };
 }
 
-function toDateInputValue(iso: string) {
-  return iso.slice(0, 10);
+function toDateInputValue(iso?: string) {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+function toFilterDate(value: string, endOfDay = false) {
+  if (!value) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return undefined;
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return date.toISOString();
 }
 
 function trendColor(value: number) {
@@ -294,7 +304,7 @@ export function OverviewPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState(() => monthRange());
+  const [filters, setFilters] = useState<OverviewQuery>(() => monthRange());
   const [locationId, setLocationId] = useState("");
   const [surveyId, setSurveyId] = useState("");
   const [labelQuery, setLabelQuery] = useState("");
@@ -312,17 +322,29 @@ export function OverviewPage() {
         setLocations(nextLocations);
         setSurveys(nextSurveys);
       },
-    );
+    ).catch(() => setError("Could not load overview filters"));
   }, [slug]);
 
   useEffect(() => {
+    let ignore = false;
     fetchOverview(slug, {
       ...filters,
       locationId: locationId || undefined,
       surveyId: surveyId || undefined,
     })
-      .then(setOverview)
-      .catch(() => setError("Could not load overview"));
+      .then((nextOverview) => {
+        if (!ignore) {
+          setOverview(nextOverview);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setError("Could not load overview");
+        }
+      });
+    return () => {
+      ignore = true;
+    };
   }, [slug, filters, locationId, surveyId]);
 
   if (error) {
@@ -372,7 +394,7 @@ export function OverviewPage() {
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                startDate: new Date(event.target.value).toISOString(),
+                startDate: toFilterDate(event.target.value),
               }))
             }
           />
@@ -382,14 +404,12 @@ export function OverviewPage() {
           <input
             type="date"
             value={toDateInputValue(filters.endDate)}
-            onChange={(event) => {
-              const end = new Date(event.target.value);
-              end.setHours(23, 59, 59, 999);
+            onChange={(event) =>
               setFilters((current) => ({
                 ...current,
-                endDate: end.toISOString(),
-              }));
-            }}
+                endDate: toFilterDate(event.target.value, true),
+              }))
+            }
           />
         </label>
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -446,49 +466,58 @@ export function OverviewPage() {
             Share a survey link or wait for customer submissions to appear here.
           </p>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            <KpiCard
+              title="Smile Score"
+              value={String(overview.smileScore)}
+              trend={overview.smileScoreTrend}
+              accent={shell.primaryColor}
+            />
+            <KpiCard
+              title="Submissions"
+              value={String(overview.submissions)}
+              trend={overview.submissionsTrend}
+              accent="#8b5cf6"
+            />
+            <KpiCard
+              title="Total Incidents"
+              value={String(overview.totalIncidents)}
+              trend={overview.totalIncidentsTrend}
+              accent="#f59e0b"
+            />
+            <KpiCard
+              title="Resolved"
+              value={`${overview.resolvedPercent}%`}
+              trend={overview.resolvedPercentTrend}
+              accent="#22c55e"
+            />
+          </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
-        <KpiCard
-          title="Smile Score"
-          value={String(overview.smileScore)}
-          trend={overview.smileScoreTrend}
-          accent={shell.primaryColor}
-        />
-        <KpiCard
-          title="Submissions"
-          value={String(overview.submissions)}
-          trend={overview.submissionsTrend}
-          accent="#8b5cf6"
-        />
-        <KpiCard
-          title="Total Incidents"
-          value={String(overview.totalIncidents)}
-          trend={overview.totalIncidentsTrend}
-          accent="#f59e0b"
-        />
-        <KpiCard
-          title="Resolved"
-          value={`${overview.resolvedPercent}%`}
-          trend={overview.resolvedPercentTrend}
-          accent="#22c55e"
-        />
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-        <SmileGauge
-          score={overview.smileScore}
-          target={overview.targetSmileScore}
-          trend={overview.smileScoreTrend}
-          primaryColor={shell.primaryColor}
-        />
-        <RatingBreakdown
-          breakdown={overview.ratingBreakdown}
-          total={overview.submissions}
-          trend={overview.submissionsTrend}
-        />
-        <ThirdPartyReviews sources={overview.thirdPartyReviews} />
-      </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+            <SmileGauge
+              score={overview.smileScore}
+              target={overview.targetSmileScore}
+              trend={overview.smileScoreTrend}
+              primaryColor={shell.primaryColor}
+            />
+            <RatingBreakdown
+              breakdown={overview.ratingBreakdown}
+              total={overview.submissions}
+              trend={overview.submissionsTrend}
+            />
+            <ThirdPartyReviews sources={overview.thirdPartyReviews} />
+          </div>
+        </>
+      )}
     </div>
   );
 }

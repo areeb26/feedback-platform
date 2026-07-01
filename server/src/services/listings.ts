@@ -55,7 +55,10 @@ export async function listTenantListings(tenantId: string) {
   return Promise.all(
     listings.map(async (listing) => {
       const location = listing.locationId
-        ? await Location.findById(listing.locationId)
+        ? await Location.findOne({
+            _id: listing.locationId,
+            tenantId,
+          })
         : null;
       return {
         listing,

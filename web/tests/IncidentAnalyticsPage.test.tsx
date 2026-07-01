@@ -25,7 +25,7 @@ const analyticsFixture = {
   staffPerformance: [
     {
       staffMember: "user_1",
-      submissions: 0,
+      submissions: 1,
       incidentsCreated: 1,
       reviewed: 1,
       resolved: 1,

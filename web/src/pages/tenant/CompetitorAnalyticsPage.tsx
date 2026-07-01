@@ -186,9 +186,13 @@ export function CompetitorAnalyticsPage() {
   }
 
   async function handleDeleteCompetitor(competitorId: string) {
-    await deleteCompetitor(slug, competitorId);
-    setSelectedIds((current) => current.filter((id) => id !== competitorId));
-    await loadData();
+    try {
+      await deleteCompetitor(slug, competitorId);
+      setSelectedIds((current) => current.filter((id) => id !== competitorId));
+      await loadData();
+    } catch {
+      setMessage("Could not delete competitor");
+    }
   }
 
   if (!enabled) {

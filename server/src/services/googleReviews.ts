@@ -6,20 +6,22 @@ import type { ExpoPushClient } from "./expoPush.js";
 import { createNoopExpoPushClient } from "./expoPush.js";
 import { notifyUnrepliedReview } from "./pushNotifications.js";
 
+type PersistedGoogleConnection = {
+  _id: { toString(): string };
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: Date;
+  status: "connected" | "expired" | "error";
+  errorMessage?: string | null;
+  save(): Promise<unknown>;
+};
+
 export async function getGoogleConnection(tenantId: string) {
   return GoogleConnection.findOne({ tenantId });
 }
 
 export async function ensureAccessToken(
-  connection: {
-    _id: { toString(): string };
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: Date;
-    status?: "connected" | "expired" | "error";
-    errorMessage?: string;
-    save(): Promise<unknown>;
-  },
+  connection: PersistedGoogleConnection,
   client: GoogleBusinessClient,
 ) {
   if (connection.expiresAt.getTime() > Date.now() + 60_000) {
@@ -99,12 +101,14 @@ export async function syncGoogleReviews(input: {
       review: createdReview,
       googleClient: input.client,
     });
-    await notifyUnrepliedReview(
-      expoPushClient,
-      input.tenantId,
-      createdReview._id.toString(),
-      createdReview.reviewerName,
-    );
+    if (createdReview.status === "not_replied") {
+      await notifyUnrepliedReview(
+        expoPushClient,
+        input.tenantId,
+        createdReview._id.toString(),
+        createdReview.reviewerName,
+      );
+    }
     imported += 1;
   }
 

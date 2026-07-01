@@ -7,10 +7,6 @@ import {
   googleSyncResponseSchema,
 } from "@feedback-platform/shared";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
-import {
-  createNoopExpoPushClient,
-  type ExpoPushClient,
-} from "../services/expoPush.js";
 import { GoogleConnection } from "../models/googleConnection.js";
 import {
   syncGoogleReviews,
@@ -20,6 +16,19 @@ import {
   consumeOAuthState,
   createOAuthState,
 } from "../services/googleOAuthState.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
+
+function rejectInvalidRedirectUri(res: Response, redirectUri: string) {
+  const configuredRedirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
+  if (configuredRedirectUri && redirectUri !== configuredRedirectUri) {
+    res.status(400).json({ error: "Invalid Google OAuth redirect URI" });
+    return true;
+  }
+  return false;
+}
 
 export function createGoogleRoutes(
   client: GoogleBusinessClient,
@@ -37,21 +46,35 @@ export function createGoogleRoutes(
 
     async connect(req: Request, res: Response) {
       const input = googleConnectStartRequestSchema.parse(req.body);
+      if (rejectInvalidRedirectUri(res, input.redirectUri)) {
+        return;
+      }
       const state = createOAuthState(req.tenant!.id);
 
-      res.json(
-        googleConnectStartResponseSchema.parse({
-          authUrl: client.buildAuthUrl({
-            redirectUri: input.redirectUri,
+      try {
+        res.json(
+          googleConnectStartResponseSchema.parse({
+            authUrl: client.buildAuthUrl({
+              redirectUri: input.redirectUri,
+              state,
+            }),
             state,
           }),
-          state,
-        }),
-      );
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Could not start Google OAuth";
+        res.status(502).json({ error: message });
+      }
     },
 
     async callback(req: Request, res: Response) {
       const input = googleConnectCallbackRequestSchema.parse(req.body);
+      if (rejectInvalidRedirectUri(res, input.redirectUri)) {
+        return;
+      }
 
       if (!consumeOAuthState(input.state, req.tenant!.id)) {
         res.status(400).json({ error: "Invalid OAuth state" });
