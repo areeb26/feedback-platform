@@ -16,6 +16,10 @@ import {
   consumeOAuthState,
   createOAuthState,
 } from "../services/googleOAuthState.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
 
 function rejectInvalidRedirectUri(res: Response, redirectUri: string) {
   const configuredRedirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI;
@@ -26,7 +30,10 @@ function rejectInvalidRedirectUri(res: Response, redirectUri: string) {
   return false;
 }
 
-export function createGoogleRoutes(client: GoogleBusinessClient) {
+export function createGoogleRoutes(
+  client: GoogleBusinessClient,
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
+) {
   return {
     async status(req: Request, res: Response) {
       const connection = await GoogleConnection.findOne({
@@ -120,6 +127,7 @@ export function createGoogleRoutes(client: GoogleBusinessClient) {
         const result = await syncGoogleReviews({
           tenantId: req.tenant!.id,
           client,
+          expoPushClient,
         });
         res.json(googleSyncResponseSchema.parse(result));
       } catch (error) {

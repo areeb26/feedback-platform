@@ -14,6 +14,11 @@ import {
   createIncidentForSubmission,
   shouldCreateIncident,
 } from "../services/incidents.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
+import { notifyNewIncident } from "../services/pushNotifications.js";
 
 async function upsertCustomer(input: {
   tenantId: string;
@@ -85,7 +90,9 @@ async function toIncidentResponse(incident: {
   });
 }
 
-export function createIncidentRoutes() {
+export function createIncidentRoutes(
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
+) {
   return {
     async list(req: Request, res: Response) {
       const incidents = await Incident.find({
@@ -152,6 +159,13 @@ export function createIncidentRoutes() {
         return;
       }
 
+      await notifyNewIncident(
+        expoPushClient,
+        req.tenant!.id,
+        incident._id.toString(),
+        incident.code,
+      );
+
       res.status(201).json(await toIncidentResponse(incident));
     },
 
@@ -184,15 +198,27 @@ export async function maybeCreateIncidentForSubmission(input: {
   submissionId: string;
   rating?: number;
   locationId?: string | null;
+  expoPushClient?: ExpoPushClient;
 }) {
   if (!shouldCreateIncident(input.rating)) {
     return null;
   }
 
-  return createIncidentForSubmission({
+  const incident = await createIncidentForSubmission({
     tenantId: input.tenantId,
     tenantName: input.tenantName,
     submissionId: input.submissionId,
     locationId: input.locationId,
   });
+
+  if (input.expoPushClient) {
+    await notifyNewIncident(
+      input.expoPushClient,
+      input.tenantId,
+      incident._id.toString(),
+      incident.code,
+    );
+  }
+
+  return incident;
 }

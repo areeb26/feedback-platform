@@ -29,6 +29,10 @@ import { createCompetitorRoutes } from "./competitors.js";
 import { createAutoReplyRuleRoutes } from "./autoReplyRules.js";
 import type { OpenAiClient } from "../auth/openai.js";
 import { createNoopOpenAiClient } from "../auth/openai.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
 
 function toLocationResponse(location: {
   _id: { toString(): string };
@@ -49,6 +53,7 @@ export function createTenantSlugRoutes(
   googleClient: GoogleBusinessClient = createNoopGoogleBusinessClient(),
   placesClient: GooglePlacesClient = createNoopGooglePlacesClient(),
   openAiClient: OpenAiClient = createNoopOpenAiClient(),
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
 ): Router {
   const router = createRouter({ mergeParams: true });
   const guard = [requireAuth(getAuth), attachTenantFromSlug];
@@ -117,7 +122,7 @@ export function createTenantSlugRoutes(
   router.get("/customers", ...guard, customerRoutes.list);
   router.get("/customers/export", ...guard, customerRoutes.exportCsv);
 
-  const incidentRoutes = createIncidentRoutes();
+  const incidentRoutes = createIncidentRoutes(expoPushClient);
   router.get("/incidents", ...guard, incidentRoutes.list);
   router.post("/incidents", ...guard, incidentRoutes.create);
   router.patch("/incidents/:incidentId", ...guard, incidentRoutes.update);
@@ -132,7 +137,11 @@ export function createTenantSlugRoutes(
     incidentAnalyticsRoutes.get,
   );
 
-  const reviewRoutes = createReviewRoutes(googleClient, openAiClient);
+  const reviewRoutes = createReviewRoutes(
+    googleClient,
+    openAiClient,
+    expoPushClient,
+  );
   router.get("/reviews", ...guard, reviewRoutes.list);
   router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
   router.post("/reviews/generate-replies", ...guard, reviewRoutes.generateReplies);
@@ -160,7 +169,7 @@ export function createTenantSlugRoutes(
     reviewAnalyticsRoutes.get,
   );
 
-  const googleRoutes = createGoogleRoutes(googleClient);
+  const googleRoutes = createGoogleRoutes(googleClient, expoPushClient);
   router.get("/google/status", ...guard, googleRoutes.status);
   router.post("/google/connect", ...guard, googleRoutes.connect);
   router.post("/google/callback", ...guard, googleRoutes.callback);

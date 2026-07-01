@@ -2,6 +2,9 @@ import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import { GoogleConnection } from "../models/googleConnection.js";
 import { Review } from "../models/review.js";
 import { applyAutoReplyRules } from "./autoReplyRules.js";
+import type { ExpoPushClient } from "./expoPush.js";
+import { createNoopExpoPushClient } from "./expoPush.js";
+import { notifyUnrepliedReview } from "./pushNotifications.js";
 
 type PersistedGoogleConnection = {
   _id: { toString(): string };
@@ -45,7 +48,9 @@ export async function ensureAccessToken(
 export async function syncGoogleReviews(input: {
   tenantId: string;
   client: GoogleBusinessClient;
+  expoPushClient?: ExpoPushClient;
 }) {
+  const expoPushClient = input.expoPushClient ?? createNoopExpoPushClient();
   const connection = await getGoogleConnection(input.tenantId);
   if (!connection) {
     throw new Error("Google account not connected");
@@ -96,6 +101,14 @@ export async function syncGoogleReviews(input: {
       review: createdReview,
       googleClient: input.client,
     });
+    if (createdReview.status === "not_replied") {
+      await notifyUnrepliedReview(
+        expoPushClient,
+        input.tenantId,
+        createdReview._id.toString(),
+        createdReview.reviewerName,
+      );
+    }
     imported += 1;
   }
 
