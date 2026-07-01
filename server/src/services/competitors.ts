@@ -13,6 +13,10 @@ export function ratingToSmileScore(rating: number | null | undefined) {
   return Math.round(rating * 20);
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function toCompetitorResponse(competitor: {
   _id: { toString(): string };
   name: string;
@@ -29,10 +33,6 @@ function toCompetitorResponse(competitor: {
     reviewCount: competitor.reviewCount ?? null,
     lastRefreshedAt: competitor.lastRefreshedAt?.toISOString() ?? null,
   };
-}
-
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function listCompetitors(tenantId: string) {
