@@ -54,9 +54,7 @@ export function createCompetitorRoutes(placesClient: GooglePlacesClient) {
         res.status(201).json(competitorSchema.parse(competitor));
       } catch (error) {
         if (isDuplicateKeyError(error)) {
-          res
-            .status(409)
-            .json({ error: "Competitor with the already exists" });
+          res.status(409).json({ error: "Competitor already exists" });
           return;
         }
         const message =
@@ -81,6 +79,10 @@ export function createCompetitorRoutes(placesClient: GooglePlacesClient) {
         }
         res.json(competitorSchema.parse(competitor));
       } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          res.status(409).json({ error: "Competitor already exists" });
+          return;
+        }
         const message =
           error instanceof Error ? error.message : "Competitor update failed";
         res.status(502).json({ error: message });

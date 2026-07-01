@@ -13,6 +13,10 @@ export function ratingToSmileScore(rating: number | null | undefined) {
   return Math.round(rating * 20);
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function toCompetitorResponse(competitor: {
   _id: { toString(): string };
   name: string;
@@ -183,7 +187,7 @@ export async function getCompetitorAnalytics(input: {
     filter._id = { $in: input.competitorIds };
   }
   if (input.search) {
-    filter.name = { $regex: input.search, $options: "i" };
+    filter.name = { $regex: escapeRegex(input.search), $options: "i" };
   }
 
   const competitors = await Competitor.find(filter).sort({ name: 1 });
