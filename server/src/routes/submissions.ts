@@ -11,6 +11,8 @@ import { Submission } from "../models/submission.js";
 import { Survey } from "../models/survey.js";
 import { Tenant } from "../models/tenant.js";
 import { maybeCreateIncidentForSubmission } from "./incidents.js";
+import type { ExpoPushClient } from "../services/expoPush.js";
+import { createNoopExpoPushClient } from "../services/expoPush.js";
 
 function extractRating(
   answers: Array<{ questionId: string; value: string | number }>,
@@ -62,7 +64,9 @@ async function upsertCustomer(input: {
   return customer;
 }
 
-export function createPublicSubmissionRoutes(): Router {
+export function createPublicSubmissionRoutes(
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
+): Router {
   const router = createRouter();
 
   router.post(
@@ -104,6 +108,7 @@ export function createPublicSubmissionRoutes(): Router {
         submissionId: submission._id.toString(),
         rating: submission.rating ?? undefined,
         locationId: survey.locationId?.toString(),
+        expoPushClient,
       });
 
       res.status(201).json(

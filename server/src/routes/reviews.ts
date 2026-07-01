@@ -19,6 +19,11 @@ import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import type { OpenAiClient } from "../auth/openai.js";
 import { postGoogleReviewReply } from "../services/googleReviews.js";
 import { applyAutoReplyRules } from "../services/autoReplyRules.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
+import { notifyUnrepliedReview } from "../services/pushNotifications.js";
 
 function toReviewResponse(review: {
   _id: { toString(): string };
@@ -90,6 +95,7 @@ function requireAiReplies(req: Request, res: Response) {
 export function createReviewRoutes(
   googleClient?: GoogleBusinessClient,
   openAiClient?: OpenAiClient,
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
 ) {
   return {
     async list(req: Request, res: Response) {
@@ -139,6 +145,14 @@ export function createReviewRoutes(
           review,
           googleClient,
         });
+        if (review.status === "not_replied") {
+          await notifyUnrepliedReview(
+            expoPushClient,
+            req.tenant!.id,
+            review._id.toString(),
+            review.reviewerName,
+          );
+        }
         imported += 1;
       }
 

@@ -7,6 +7,10 @@ import {
   googleSyncResponseSchema,
 } from "@feedback-platform/shared";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
+import {
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "../services/expoPush.js";
 import { GoogleConnection } from "../models/googleConnection.js";
 import {
   syncGoogleReviews,
@@ -17,7 +21,10 @@ import {
   createOAuthState,
 } from "../services/googleOAuthState.js";
 
-export function createGoogleRoutes(client: GoogleBusinessClient) {
+export function createGoogleRoutes(
+  client: GoogleBusinessClient,
+  expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
+) {
   return {
     async status(req: Request, res: Response) {
       const connection = await GoogleConnection.findOne({
@@ -97,6 +104,7 @@ export function createGoogleRoutes(client: GoogleBusinessClient) {
         const result = await syncGoogleReviews({
           tenantId: req.tenant!.id,
           client,
+          expoPushClient,
         });
         res.json(googleSyncResponseSchema.parse(result));
       } catch (error) {

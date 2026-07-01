@@ -14,6 +14,11 @@ import {
   resolveOpenAiClient,
   type OpenAiClient,
 } from "./auth/openai.js";
+import {
+  createExpoPushClient,
+  createNoopExpoPushClient,
+  type ExpoPushClient,
+} from "./services/expoPush.js";
 import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
@@ -30,6 +35,7 @@ export type AppOptions = {
   googleClient?: GoogleBusinessClient;
   placesClient?: GooglePlacesClient;
   openAiClient?: OpenAiClient;
+  expoPushClient?: ExpoPushClient;
 };
 
 function parseSuperAdminIds(): string[] {
@@ -46,6 +52,7 @@ export function createApp(options: AppOptions = {}) {
   const googleClient = resolveGoogleClient(options);
   const placesClient = resolvePlacesClient(options);
   const openAiClient = resolveOpenAiClient(options.openAiClient);
+  const expoPushClient = resolveExpoPushClient(options);
   const app = express();
 
   app.use(express.json());
@@ -59,13 +66,21 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.use("/api/public", createSurveyRoutes());
-  app.use("/api/public", createPublicSubmissionRoutes());
+  app.use("/api/public", createPublicSubmissionRoutes(expoPushClient));
 
   const tenantRouter = express.Router();
   if (!options.getAuth) {
     tenantRouter.use(clerkMiddleware());
   }
-  tenantRouter.use(createTenantRoutes(getAuth, googleClient, placesClient, openAiClient));
+  tenantRouter.use(
+    createTenantRoutes(
+      getAuth,
+      googleClient,
+      placesClient,
+      openAiClient,
+      expoPushClient,
+    ),
+  );
   app.use("/api/tenant", tenantRouter);
 
   const adminRouter = express.Router();
@@ -100,6 +115,16 @@ function resolveClerkClient(options: AppOptions): ClerkAdminClient {
     return createDefaultClerkAdminClient();
   }
   return createNoopClerkClient();
+}
+
+function resolveExpoPushClient(options: AppOptions): ExpoPushClient {
+  if (options.expoPushClient) {
+    return options.expoPushClient;
+  }
+  if (options.getAuth) {
+    return createNoopExpoPushClient();
+  }
+  return createExpoPushClient();
 }
 
 function createNoopClerkClient(): ClerkAdminClient {
