@@ -18,19 +18,7 @@ export async function getGoogleConnection(tenantId: string) {
 }
 
 export async function ensureAccessToken(
-<<<<<<< HEAD
-  connection: {
-    _id: { toString(): string };
-    accessToken: string;
-    refreshToken: string;
-    expiresAt: Date;
-    status?: "connected" | "expired" | "error";
-    errorMessage?: string;
-    save(): Promise<unknown>;
-  },
-=======
   connection: PersistedGoogleConnection,
->>>>>>> origin/main
   client: GoogleBusinessClient,
 ) {
   if (connection.expiresAt.getTime() > Date.now() + 60_000) {

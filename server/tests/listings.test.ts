@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { listingSchema, listingSyncResponseSchema } from "@feedback-platform/shared";
 import type { GoogleBusinessClient } from "../src/auth/googleBusiness.js";
 import { createApp } from "../src/app.js";
+import { Listing } from "../src/models/listing.js";
 import { Location } from "../src/models/location.js";
 import { Listing } from "../src/models/listing.js";
 import { Tenant } from "../src/models/tenant.js";
@@ -63,21 +64,21 @@ async function connectGoogle(app: Awaited<ReturnType<typeof createApp>>) {
 }
 
 describe("tenant listings", () => {
-  it("syncs Google listings per location", async () => {
+  it("syncs Google listings per location and prunes stale Google listings", async () => {
     const googleClient = createMockGoogleClient();
-    await Tenant.create({
+    const tenant = await Tenant.create({
       slug: "hafiz-sweets",
       name: "Hafiz Sweets",
       clerkOrgId: "org_hafiz",
       primaryColor: "#7c3aed",
     });
     await Location.create({
-      tenantId: (await Tenant.findOne())!._id,
+      tenantId: tenant._id,
       name: "Hafiz Sweets",
       labels: [],
     });
     await Location.create({
-      tenantId: (await Tenant.findOne())!._id,
+      tenantId: tenant._id,
       name: "Hafiz Sweets - Saudabad",
       labels: [],
     });
@@ -103,6 +104,105 @@ describe("tenant listings", () => {
     const listing = listingSchema.parse(list.body[0]);
     expect(listing.directory).toBe("google");
     expect(listing.locationName).toBeTruthy();
+
+    vi.mocked(googleClient.listListings).mockResolvedValue([
+      {
+        externalId: "locations/456",
+        name: "Hafiz Sweets",
+        rating: 4.5,
+        reviewCount: 70,
+        locationName: "Hafiz Sweets",
+      },
+    ]);
+
+    const secondSync = await request(app).post(
+      "/api/tenant/by-slug/hafiz-sweets/listings/sync",
+    );
+    expect(secondSync.status).toBe(200);
+
+    const prunedList = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/listings",
+    );
+    expect(prunedList.status).toBe(200);
+    expect(prunedList.body).toHaveLength(1);
+    expect(listingSchema.parse(prunedList.body[0]).name).toBe("Hafiz Sweets");
+  });
+
+  it("does not expose a cross-tenant location name from a listing", async () => {
+    const tenant = await Tenant.create({
+      slug: "hafiz-sweets",
+      name: "Hafiz Sweets",
+      clerkOrgId: "org_hafiz",
+      primaryColor: "#7c3aed",
+    });
+    const otherTenant = await Tenant.create({
+      slug: "other-shop",
+      name: "Other Shop",
+      clerkOrgId: "org_other",
+      primaryColor: "#2563eb",
+    });
+    const otherLocation = await Location.create({
+      tenantId: otherTenant._id,
+      name: "Other Shop Branch",
+      labels: [],
+    });
+    await Listing.create({
+      tenantId: tenant._id,
+      locationId: otherLocation._id,
+      directory: "google",
+      externalId: "locations/cross-tenant",
+      name: "Hafiz Sweets Google",
+      rating: 4.3,
+      reviewCount: 65,
+    });
+
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      googleClient: createMockGoogleClient(),
+    });
+
+    const response = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/listings",
+    );
+    expect(response.status).toBe(200);
+    expect(listingSchema.parse(response.body[0]).locationName).toBeNull();
+  });
+
+  it("returns 502 when syncing before Google is connected", async () => {
+    await Tenant.create({
+      slug: "hafiz-sweets",
+      name: "Hafiz Sweets",
+      clerkOrgId: "org_hafiz",
+      primaryColor: "#7c3aed",
+    });
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_hafiz" }),
+      googleClient: createMockGoogleClient(),
+    });
+
+    const response = await request(app).post(
+      "/api/tenant/by-slug/hafiz-sweets/listings/sync",
+    );
+    expect(response.status).toBe(502);
+    expect(response.body.error).toBe("Google account not connected");
+  });
+
+  it("rejects listings access when the Clerk org does not match the slug", async () => {
+    await Tenant.create({
+      slug: "hafiz-sweets",
+      name: "Hafiz Sweets",
+      clerkOrgId: "org_hafiz",
+      primaryColor: "#7c3aed",
+    });
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_other" }),
+      googleClient: createMockGoogleClient(),
+    });
+
+    const response = await request(app).get(
+      "/api/tenant/by-slug/hafiz-sweets/listings",
+    );
+    expect(response.status).toBe(403);
   });
 
   it("does not expose another tenant location name for a listing", async () => {

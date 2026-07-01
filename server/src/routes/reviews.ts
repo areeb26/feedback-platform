@@ -18,18 +18,11 @@ import {
   parseReviewCsv,
 } from "../services/reviews.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
-<<<<<<< HEAD
 import type { OpenAiClient } from "../auth/openai.js";
 import { postGoogleReviewReply } from "../services/googleReviews.js";
 import { applyAutoReplyRules } from "../services/autoReplyRules.js";
-=======
-import {
-  getGoogleConnection,
-  postGoogleReviewReply,
-} from "../services/googleReviews.js";
 
 const MAX_IMPORT_ROWS = 1000;
->>>>>>> origin/main
 
 function toReviewResponse(review: {
   _id: { toString(): string };
@@ -93,7 +86,10 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   return mongoFilter;
 }
 
-<<<<<<< HEAD
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function requireAiReplies(req: Request, res: Response) {
   if (!req.tenant?.featureFlags.aiReplies) {
     res.status(403).json({ error: "AI replies not enabled" });
@@ -106,13 +102,6 @@ export function createReviewRoutes(
   googleClient?: GoogleBusinessClient,
   openAiClient?: OpenAiClient,
 ) {
-=======
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
->>>>>>> origin/main
   return {
     async list(req: Request, res: Response) {
       const reviews = await Review.find(
@@ -158,14 +147,9 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
           continue;
         }
 
-<<<<<<< HEAD
-        const review = await Review.create({
-          tenantId: req.tenant!.id,
-=======
         const externalId = buildReviewExternalId(input.source, row);
         candidates.push({
           tenantId,
->>>>>>> origin/main
           source: input.source,
           externalId,
           reviewerName: row.reviewerName,
@@ -182,15 +166,6 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
           status: defaultStatusForSource(input.source),
           postedAt,
         });
-<<<<<<< HEAD
-        await applyAutoReplyRules({
-          tenantId: req.tenant!.id,
-          review,
-          googleClient,
-        });
-        imported += 1;
-=======
->>>>>>> origin/main
       }
 
       const existingReviews = await Review.find({
@@ -207,7 +182,14 @@ export function createReviewRoutes(googleClient?: GoogleBusinessClient) {
         (review) => !existingIds.has(review.externalId),
       );
       if (newReviews.length > 0) {
-        await Review.insertMany(newReviews);
+        const insertedReviews = await Review.insertMany(newReviews);
+        for (const review of insertedReviews) {
+          await applyAutoReplyRules({
+            tenantId,
+            review,
+            googleClient,
+          });
+        }
       }
 
       const imported = newReviews.length;
