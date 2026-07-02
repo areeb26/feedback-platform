@@ -11,7 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { Review } from "@feedback-platform/shared";
 import {
-  fetchReviews,
+  fetchReview,
   formatReviewDate,
   replyToReview,
   reviewStatusLabel,
@@ -34,13 +34,10 @@ export default function ReviewDetailScreen() {
 
     setError(null);
     try {
-      const reviews = await fetchReviews(slug, getToken);
-      const match = reviews.find((item) => item.id === id) ?? null;
+      const match = await fetchReview(slug, id, getToken);
       setReview(match);
-      if (!match) {
-        setError("Review not found");
-      }
     } catch (err) {
+      setReview(null);
       setError(err instanceof Error ? err.message : "Failed to load review");
     } finally {
       setLoading(false);

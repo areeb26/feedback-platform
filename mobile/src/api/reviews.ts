@@ -6,10 +6,24 @@ import {
 } from "@feedback-platform/shared";
 import { apiFetch } from "./client";
 
+export { reviewStatusLabel } from "../lib/labels";
+
 const reviewListSchema = reviewSchema.array();
 
 function tenantBase(slug: string) {
   return `/api/tenant/by-slug/${slug}`;
+}
+
+export async function fetchReview(
+  slug: string,
+  reviewId: string,
+  getToken: () => Promise<string | null>,
+): Promise<Review> {
+  const payload = await apiFetch<unknown>(
+    `${tenantBase(slug)}/reviews/${reviewId}`,
+    getToken,
+  );
+  return reviewSchema.parse(payload);
 }
 
 export async function fetchReviews(
@@ -53,10 +67,4 @@ export function formatReviewDate(isoDate: string) {
     minute: "2-digit",
     hour12: false,
   }).format(date);
-}
-
-export function reviewStatusLabel(status: Review["status"]) {
-  if (status === "replied") return "Replied";
-  if (status === "reply_not_supported") return "Reply Not Supported";
-  return "Not Replied";
 }
