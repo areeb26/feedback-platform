@@ -103,11 +103,40 @@
 
 .home__panel {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1.25rem;
   padding: clamp(1.5rem, 4vw, 3rem);
   border-left: 1px solid color-mix(in srgb, var(--stone-200) 80%, transparent);
   background: color-mix(in srgb, var(--stone-100) 55%, transparent);
+}
+
+.home__auth-bar {
+  width: min(100%, 26rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--stone-200);
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, #fff 92%, var(--stone-100));
+}
+
+.home__auth-label {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stone-500);
+}
+
+.home__auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .home__cards {

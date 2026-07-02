@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { Tenant } from "../models/tenant.js";
+import { setRequestTenant } from "./setRequestTenant.js";
 
 export async function attachTenantFromSlug(
   req: Request,
@@ -30,18 +31,6 @@ export async function attachTenantFromSlug(
     return;
   }
 
-  req.tenant = {
-    id: tenant._id.toString(),
-    slug: tenant.slug,
-    name: tenant.name,
-    logoUrl: tenant.logoUrl ?? null,
-    primaryColor: tenant.primaryColor,
-    featureFlags: {
-      socialListening: tenant.featureFlags?.socialListening ?? false,
-      competitorAnalytics: tenant.featureFlags?.competitorAnalytics ?? false,
-      aiReplies: tenant.featureFlags?.aiReplies ?? false,
-      googleReviews: tenant.featureFlags?.googleReviews ?? false,
-    },
-  };
+  setRequestTenant(req, tenant);
   next();
 }

@@ -25,6 +25,7 @@ import { defaultGetAuth, clerkMiddleware } from "./auth/clerk.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createSurveyRoutes } from "./routes/surveys.js";
 import { createPublicSubmissionRoutes } from "./routes/submissions.js";
+import { createPublicTenantRoutes } from "./routes/publicTenants.js";
 import { createTenantRoutes } from "./routes/tenant.js";
 import type { AuthContext } from "./types.js";
 
@@ -69,6 +70,7 @@ export function createApp(options: AppOptions = {}) {
 
   app.use("/api/public", createSurveyRoutes());
   app.use("/api/public", createPublicSubmissionRoutes(expoPushClient));
+  app.use("/api/public", createPublicTenantRoutes());
 
   const tenantRouter = express.Router();
   if (!options.getAuth) {
@@ -160,7 +162,10 @@ function createNoopClerkClient(): ClerkAdminClient {
     async createOrganization() {
       throw new Error("Clerk client not configured");
     },
-    async inviteAdmin() {
+    async deleteOrganization() {
+      throw new Error("Clerk client not configured");
+    },
+    async provisionTenantAdmin() {
       throw new Error("Clerk client not configured");
     },
   };

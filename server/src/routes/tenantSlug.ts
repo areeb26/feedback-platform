@@ -1,10 +1,7 @@
 import type { Request, Response, Router } from "express";
 import { Router as createRouter } from "express";
 import {
-  createLocationRequestSchema,
-  locationSchema,
   tenantShellSchema,
-  updateLocationRequestSchema,
 } from "@feedback-platform/shared";
 import type { AuthContext } from "../types.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
@@ -13,7 +10,6 @@ import type { GooglePlacesClient } from "../auth/googlePlaces.js";
 import { createNoopGooglePlacesClient } from "../auth/googlePlaces.js";
 import { attachTenantFromSlug } from "../middleware/attachTenantFromSlug.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { Location } from "../models/location.js";
 import {
   createTenantSurveyRoutes,
 } from "./surveys.js";
@@ -27,26 +23,13 @@ import { createGoogleRoutes } from "./google.js";
 import { createListingRoutes } from "./listings.js";
 import { createCompetitorRoutes } from "./competitors.js";
 import { createAutoReplyRuleRoutes } from "./autoReplyRules.js";
+import { createLocationRoutes } from "./locations.js";
 import type { OpenAiClient } from "../auth/openai.js";
 import { createNoopOpenAiClient } from "../auth/openai.js";
 import {
   createNoopExpoPushClient,
   type ExpoPushClient,
 } from "../services/expoPush.js";
-
-function toLocationResponse(location: {
-  _id: { toString(): string };
-  name: string;
-  address?: string | null;
-  labels?: string[] | null;
-}) {
-  return locationSchema.parse({
-    id: location._id.toString(),
-    name: location.name,
-    address: location.address ?? null,
-    labels: location.labels ?? [],
-  });
-}
 
 export function createTenantSlugRoutes(
   getAuth: (req: Request) => AuthContext | null,
@@ -70,46 +53,10 @@ export function createTenantSlugRoutes(
     );
   });
 
-  router.get("/locations", ...guard, async (_req: Request, res: Response) => {
-    const locations = await Location.find({ tenantId: _req.tenant!.id }).sort({
-      name: 1,
-    });
-    res.json(locations.map(toLocationResponse));
-  });
-
-  router.post("/locations", ...guard, async (req: Request, res: Response) => {
-    const input = createLocationRequestSchema.parse(req.body);
-    const location = await Location.create({
-      tenantId: req.tenant!.id,
-      name: input.name,
-      address: input.address,
-      labels: input.labels ?? [],
-    });
-    res.status(201).json(toLocationResponse(location));
-  });
-
-  router.patch(
-    "/locations/:locationId",
-    ...guard,
-    async (req: Request, res: Response) => {
-      const input = updateLocationRequestSchema.parse(req.body);
-      const location = await Location.findOne({
-        _id: req.params.locationId,
-        tenantId: req.tenant!.id,
-      });
-      if (!location) {
-        res.status(404).json({ error: "Location not found" });
-        return;
-      }
-
-      if (input.name !== undefined) location.name = input.name;
-      if (input.address !== undefined) location.address = input.address;
-      if (input.labels !== undefined) location.labels = input.labels;
-
-      await location.save();
-      res.json(toLocationResponse(location));
-    },
-  );
+  const locationRoutes = createLocationRoutes();
+  router.get("/locations", ...guard, locationRoutes.list);
+  router.post("/locations", ...guard, locationRoutes.create);
+  router.patch("/locations/:locationId", ...guard, locationRoutes.update);
 
   const surveyRoutes = createTenantSurveyRoutes();
 
@@ -124,6 +71,8 @@ export function createTenantSlugRoutes(
 
   const incidentRoutes = createIncidentRoutes(expoPushClient);
   router.get("/incidents", ...guard, incidentRoutes.list);
+  router.get("/incidents/export", ...guard, incidentRoutes.exportCsv);
+  router.get("/incidents/:incidentId", ...guard, incidentRoutes.get);
   router.post("/incidents", ...guard, incidentRoutes.create);
   router.patch("/incidents/:incidentId", ...guard, incidentRoutes.update);
 
@@ -143,10 +92,12 @@ export function createTenantSlugRoutes(
     expoPushClient,
   );
   router.get("/reviews", ...guard, reviewRoutes.list);
+  router.get("/reviews/export", ...guard, reviewRoutes.exportCsv);
+  router.get("/reviews/:reviewId", ...guard, reviewRoutes.get);
+  router.post("/reviews", ...guard, reviewRoutes.create);
   router.post("/reviews/import", ...guard, reviewRoutes.importCsv);
   router.post("/reviews/generate-replies", ...guard, reviewRoutes.generateReplies);
   router.patch("/reviews/:reviewId/reply", ...guard, reviewRoutes.reply);
-  router.get("/reviews/export", ...guard, reviewRoutes.exportCsv);
 
   const autoReplyRuleRoutes = createAutoReplyRuleRoutes();
   router.get("/auto-reply-rules", ...guard, autoReplyRuleRoutes.list);

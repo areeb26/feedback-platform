@@ -1,22 +1,18 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/react";
+import { AuthControls } from "../components/AuthControls";
+import { apiFetch } from "../api/http";
+import { fetchTenantProfile } from "../api/tenant";
 import "./HomePage.css";
 
 type HealthState = "loading" | "ok" | "error";
 
-function normalizeSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
-
 export function HomePage() {
   const navigate = useNavigate();
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const [health, setHealth] = useState<HealthState>("loading");
   const [version, setVersion] = useState<string | null>(null);
-  const [tenantSlug, setTenantSlug] = useState("");
 
   useEffect(() => {
     fetch("/api/health")
@@ -28,12 +24,34 @@ export function HomePage() {
       .catch(() => setHealth("error"));
   }, []);
 
-  function openTenantDashboard(event: FormEvent) {
-    event.preventDefault();
-    const slug = normalizeSlug(tenantSlug);
-    if (!slug) return;
-    navigate(`/t/${slug}/overview`);
-  }
+  useEffect(() => {
+    if (!authLoaded || !isSignedIn) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      const adminResponse = await apiFetch("/api/admin/tenants");
+      if (!cancelled && adminResponse.ok) {
+        navigate("/admin/tenants", { replace: true });
+        return;
+      }
+
+      try {
+        const profile = await fetchTenantProfile();
+        if (!cancelled) {
+          navigate(`/t/${profile.slug}/overview`, { replace: true });
+        }
+      } catch {
+        // Stay on the agency landing page.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoaded, isSignedIn, navigate]);
 
   const statusLabel =
     health === "loading"
@@ -57,7 +75,8 @@ export function HomePage() {
         </h1>
         <p className="home__lede">
           Collect feedback, resolve incidents, and manage reviews across every
-          location — one dashboard per brand.
+          location — one branded dashboard per client. Access is agency-provisioned
+          only.
         </p>
 
         <div className="home__stats" aria-label="Platform capabilities">
@@ -77,41 +96,17 @@ export function HomePage() {
       </section>
 
       <section className="home__panel" aria-label="Sign in options">
-        <div className="home__cards">
-          <article className="home__card">
-            <h2 className="home__card-title">Tenant dashboard</h2>
-            <p className="home__card-text">
-              Open your brand workspace. Enter the slug your agency assigned
-              (e.g. <code>hafiz-sweets</code>).
-            </p>
-            <form className="home__slug-row" onSubmit={openTenantDashboard}>
-              <label htmlFor="tenant-slug" className="sr-only">
-                Tenant slug
-              </label>
-              <input
-                id="tenant-slug"
-                className="home__input"
-                value={tenantSlug}
-                onChange={(event) => setTenantSlug(event.target.value)}
-                placeholder="your-brand-slug"
-                autoComplete="organization"
-                spellCheck={false}
-              />
-              <button
-                type="submit"
-                className="home__btn home__btn--primary"
-                aria-label="Open tenant dashboard"
-              >
-                Open
-              </button>
-            </form>
-          </article>
+        <div className="home__auth-bar">
+          <p className="home__auth-label">Account</p>
+          <AuthControls className="home__auth-controls" />
+        </div>
 
+        <div className="home__cards">
           <article className="home__card">
             <h2 className="home__card-title">Platform admin</h2>
             <p className="home__card-text">
-              Onboard tenants, manage branding, and control feature flags for
-              agency clients.
+              Onboard client workspaces, set branding, and hand over login
+              credentials. Clients cannot self-register.
             </p>
             <Link to="/admin/tenants" className="home__btn home__btn--ghost">
               Super-admin panel

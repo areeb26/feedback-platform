@@ -190,7 +190,8 @@ export function TenantGatePage() {
         ) : (
           <>
             <p className="tenant-gate__text">
-              Sign in to open your feedback and reputation dashboard.
+              Sign in with the email and password your agency gave you to open
+              your feedback and reputation dashboard.
             </p>
             <SignInButton mode="modal">
               <button type="button" className="tenant-gate__btn">
