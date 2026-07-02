@@ -28,6 +28,7 @@ export const overviewQuerySchema = z.object({
   endDate: z.iso.datetime().optional(),
   locationId: z.string().optional(),
   surveyId: z.string().optional(),
+  label: z.string().optional(),
 });
 
 export type OverviewQuery = z.infer<typeof overviewQuerySchema>;

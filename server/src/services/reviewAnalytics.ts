@@ -1,3 +1,15 @@
+import {
+  reviewAnalyticsQuerySchema,
+  reviewAnalyticsSchema,
+  type ReviewAnalytics,
+  type ReviewAnalyticsQuery,
+} from "@feedback-platform/shared";
+import { Location } from "../models/location.js";
+import { Review } from "../models/review.js";
+import { parseAnalyticsDateRange } from "./analytics/dateRange.js";
+import { calculateTrend } from "./analytics/trend.js";
+import { escapeRegex } from "./text.js";
+
 export function calculateAverageRating(ratings: number[]) {
   if (ratings.length === 0) {
     return 0;
@@ -9,9 +21,7 @@ export function calculateAverageRating(ratings: number[]) {
   );
 }
 
-export function calculateReplyRate(
-  reviews: Array<{ status: string }>,
-) {
+export function calculateReplyRate(reviews: Array<{ status: string }>) {
   if (reviews.length === 0) {
     return 0;
   }
@@ -25,10 +35,6 @@ export function calculatePositivePercent(ratings: number[]) {
   }
   const positive = ratings.filter((rating) => rating >= 4).length;
   return Math.round((positive / ratings.length) * 1000) / 10;
-}
-
-export function calculateTrend(current: number, previous: number) {
-  return Math.round((current - previous) * 10) / 10;
 }
 
 export function toDateKey(date: Date) {
@@ -157,4 +163,122 @@ export function buildLabelBreakdown(
         repliedCount: rows.filter((row) => row.status === "replied").length,
       };
     });
+}
+
+async function loadReviews(
+  tenantId: string,
+  range: { start: Date; end: Date },
+  filters: {
+    directory?: "google" | "foodpanda";
+    listing?: string;
+    label?: string;
+  },
+) {
+  const mongoFilter: Record<string, unknown> = {
+    tenantId,
+    postedAt: { $gte: range.start, $lte: range.end },
+  };
+
+  if (filters.directory) mongoFilter.source = filters.directory;
+  if (filters.listing) {
+    const listing = escapeRegex(filters.listing);
+    mongoFilter.$or = [
+      { locationName: { $regex: listing, $options: "i" } },
+      { listingName: { $regex: listing, $options: "i" } },
+    ];
+  }
+
+  let reviews = await Review.find(mongoFilter);
+
+  if (filters.label) {
+    const locations = await Location.find({
+      tenantId,
+      labels: { $regex: escapeRegex(filters.label), $options: "i" },
+    });
+    const locationNames = new Set(locations.map((location) => location.name));
+    reviews = reviews.filter(
+      (review) =>
+        review.locationName && locationNames.has(review.locationName),
+    );
+  }
+
+  return reviews;
+}
+
+function summarize(
+  reviews: Array<{
+    rating: number;
+    status: string;
+    postedAt: Date;
+    listingName?: string | null;
+    locationName?: string | null;
+  }>,
+  labelsByLocationName: Map<string, string[]>,
+) {
+  const ratings = reviews.map((review) => review.rating);
+  const repliedCount = reviews.filter(
+    (review) => review.status === "replied",
+  ).length;
+  const positiveReviewsCount = ratings.filter((rating) => rating >= 4).length;
+
+  return {
+    totalReviews: reviews.length,
+    averageRating: calculateAverageRating(ratings),
+    replyRate: calculateReplyRate(reviews),
+    repliedCount,
+    positiveReviewsPercent: calculatePositivePercent(ratings),
+    positiveReviewsCount,
+    ratingsByDate: buildRatingsByDate(reviews),
+    listingsBreakdown: buildListingBreakdown(reviews),
+    labelsBreakdown: buildLabelBreakdown(reviews, labelsByLocationName),
+  };
+}
+
+export async function getReviewAnalyticsDashboard(
+  tenantId: string,
+  query: ReviewAnalyticsQuery,
+): Promise<ReviewAnalytics> {
+  const { start, end, previousStart, previousEnd, filters } =
+    parseAnalyticsDateRange(query, reviewAnalyticsQuerySchema);
+
+  const [currentReviews, previousReviews] = await Promise.all([
+    loadReviews(tenantId, { start, end }, filters),
+    loadReviews(
+      tenantId,
+      { start: previousStart, end: previousEnd },
+      filters,
+    ),
+  ]);
+  const locations = await Location.find({ tenantId });
+  const labelsByLocationName = new Map(
+    locations.map((location) => [location.name, location.labels ?? []]),
+  );
+
+  const current = summarize(currentReviews, labelsByLocationName);
+  const previous = summarize(previousReviews, labelsByLocationName);
+
+  return reviewAnalyticsSchema.parse({
+    totalReviews: current.totalReviews,
+    totalReviewsTrend: calculateTrend(
+      current.totalReviews,
+      previous.totalReviews,
+    ),
+    averageRating: current.averageRating,
+    averageRatingTrend: calculateTrend(
+      current.averageRating,
+      previous.averageRating,
+    ),
+    replyRate: current.replyRate,
+    replyRateTrend: calculateTrend(current.replyRate, previous.replyRate),
+    repliedCount: current.repliedCount,
+    positiveReviewsPercent: current.positiveReviewsPercent,
+    positiveReviewsTrend: calculateTrend(
+      current.positiveReviewsPercent,
+      previous.positiveReviewsPercent,
+    ),
+    positiveReviewsCount: current.positiveReviewsCount,
+    ratingsByDate: current.ratingsByDate,
+    listingsBreakdown: current.listingsBreakdown,
+    labelsBreakdown: current.labelsBreakdown,
+  });
 }

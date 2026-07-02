@@ -331,6 +331,7 @@ export function OverviewPage() {
       ...filters,
       locationId: locationId || undefined,
       surveyId: surveyId || undefined,
+      label: labelQuery.trim() || undefined,
     })
       .then((nextOverview) => {
         if (!ignore) {
@@ -345,7 +346,7 @@ export function OverviewPage() {
     return () => {
       ignore = true;
     };
-  }, [slug, filters, locationId, surveyId]);
+  }, [slug, filters, locationId, surveyId, labelQuery]);
 
   if (error) {
     return <div>{error}</div>;
