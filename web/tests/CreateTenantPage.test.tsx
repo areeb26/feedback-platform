@@ -4,18 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { CreateTenantPage } from "../src/pages/admin/CreateTenantPage";
 
-const mockNavigate = vi.fn();
-
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
 describe("CreateTenantPage", () => {
-  it("creates tenant when form is submitted", async () => {
+  it("creates tenant and shows client handover details", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -25,7 +15,15 @@ describe("CreateTenantPage", () => {
         status: "active",
         primaryColor: "#7c3aed",
         logoUrl: null,
+        featureFlags: {
+          socialListening: false,
+          competitorAnalytics: false,
+          aiReplies: false,
+          googleReviews: false,
+        },
         usage: { surveys: 0, submissions: 0, users: 0 },
+        clientEntryPath: "/t/hafiz-sweets",
+        adminEmail: "admin@hafiz.com",
       }),
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -38,8 +36,9 @@ describe("CreateTenantPage", () => {
 
     await user.type(screen.getByLabelText(/business name/i), "Hafiz Sweets");
     await user.type(screen.getByLabelText(/slug/i), "hafiz-sweets");
-    await user.type(screen.getByLabelText(/admin email/i), "admin@hafiz.com");
-    await user.click(screen.getByRole("button", { name: /create tenant/i }));
+    await user.type(screen.getByLabelText(/client login email/i), "admin@hafiz.com");
+    await user.type(screen.getByLabelText(/client password/i), "client-pass-123");
+    await user.click(screen.getByRole("button", { name: /create client workspace/i }));
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/admin/tenants",
@@ -50,9 +49,13 @@ describe("CreateTenantPage", () => {
           slug: "hafiz-sweets",
           primaryColor: "#7c3aed",
           adminEmail: "admin@hafiz.com",
+          adminPassword: "client-pass-123",
         }),
       }),
     );
-    expect(mockNavigate).toHaveBeenCalledWith("/admin/tenants");
+    expect(await screen.findByText(/client workspace ready/i)).toBeTruthy();
+    expect(screen.getByText("admin@hafiz.com")).toBeTruthy();
+    expect(screen.getByText("client-pass-123")).toBeTruthy();
+    expect(screen.getByText(/\/t\/hafiz-sweets/)).toBeTruthy();
   });
 });

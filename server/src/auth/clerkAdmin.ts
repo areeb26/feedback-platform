@@ -3,8 +3,10 @@ export type ClerkAdminClient = {
     name: string;
     createdBy: string;
   }): Promise<{ id: string }>;
-  inviteAdmin(input: {
+  deleteOrganization(organizationId: string): Promise<void>;
+  provisionTenantAdmin(input: {
     organizationId: string;
     emailAddress: string;
+    password: string;
   }): Promise<void>;
 };

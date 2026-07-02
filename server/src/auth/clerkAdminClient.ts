@@ -17,10 +17,18 @@ export function createDefaultClerkAdminClient(): ClerkAdminClient {
       });
       return { id: organization.id };
     },
-    async inviteAdmin({ organizationId, emailAddress }) {
-      await clerk.organizations.createOrganizationInvitation({
+    async deleteOrganization(organizationId) {
+      await clerk.organizations.deleteOrganization(organizationId);
+    },
+    async provisionTenantAdmin({ organizationId, emailAddress, password }) {
+      const user = await clerk.users.createUser({
+        emailAddress: [emailAddress],
+        password,
+      });
+
+      await clerk.organizations.createOrganizationMembership({
         organizationId,
-        emailAddress,
+        userId: user.id,
         role: "org:admin",
       });
     },

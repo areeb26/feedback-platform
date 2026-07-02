@@ -6,6 +6,13 @@ import { registerTestDbHooks } from "./db.js";
 
 registerTestDbHooks();
 
+const defaultFeatureFlags = {
+  socialListening: false,
+  competitorAnalytics: false,
+  aiReplies: false,
+  googleReviews: false,
+};
+
 describe("GET /api/admin/tenants", () => {
   it("returns 403 for non-super-admin users", async () => {
     const app = createApp({
@@ -48,6 +55,7 @@ describe("GET /api/admin/tenants", () => {
         status: "active",
         primaryColor: "#7c3aed",
         logoUrl: null,
+        featureFlags: defaultFeatureFlags,
         usage: { surveys: 0, submissions: 0, users: 0 },
       },
       {
@@ -56,6 +64,7 @@ describe("GET /api/admin/tenants", () => {
         status: "suspended",
         primaryColor: "#7c3aed",
         logoUrl: null,
+        featureFlags: defaultFeatureFlags,
         usage: { surveys: 0, submissions: 0, users: 0 },
       },
     ]);
@@ -91,6 +100,7 @@ describe("PATCH /api/admin/tenants/:slug", () => {
       status: "suspended",
       primaryColor: "#ff0000",
       logoUrl: null,
+      featureFlags: defaultFeatureFlags,
       usage: { surveys: 0, submissions: 0, users: 0 },
     });
   });

@@ -3,6 +3,8 @@ import { Router as createRouter } from "express";
 import {
   adminTenantSchema,
   createTenantRequestSchema,
+  createTenantResponseSchema,
+  tenantFeatureFlagsSchema,
   updateTenantRequestSchema,
 } from "@feedback-platform/shared";
 import type { ClerkAdminClient } from "../auth/clerkAdmin.js";
@@ -21,6 +23,12 @@ function toAdminTenant(tenant: {
   status: "active" | "suspended";
   primaryColor: string;
   logoUrl?: string | null;
+  featureFlags?: {
+    socialListening?: boolean;
+    competitorAnalytics?: boolean;
+    aiReplies?: boolean;
+    googleReviews?: boolean;
+  };
   _id: { toString(): string };
 }) {
   return {
@@ -29,6 +37,12 @@ function toAdminTenant(tenant: {
     status: tenant.status,
     primaryColor: tenant.primaryColor,
     logoUrl: tenant.logoUrl ?? null,
+    featureFlags: tenantFeatureFlagsSchema.parse({
+      socialListening: tenant.featureFlags?.socialListening ?? false,
+      competitorAnalytics: tenant.featureFlags?.competitorAnalytics ?? false,
+      aiReplies: tenant.featureFlags?.aiReplies ?? false,
+      googleReviews: tenant.featureFlags?.googleReviews ?? false,
+    }),
     usage: { surveys: 0, submissions: 0, users: 0 },
   };
 }
@@ -76,16 +90,32 @@ export function createAdminRoutes(
       clerkOrgId: organization.id,
     });
 
-    await clerkClient.inviteAdmin({
-      organizationId: organization.id,
-      emailAddress: input.adminEmail,
-    });
+    try {
+      await clerkClient.provisionTenantAdmin({
+        organizationId: organization.id,
+        emailAddress: input.adminEmail,
+        password: input.adminPassword,
+      });
+    } catch (error) {
+      await Tenant.deleteOne({ _id: tenant._id });
+      await clerkClient.deleteOrganization(organization.id).catch(() => undefined);
+      const message =
+        error instanceof Error ? error.message : "Failed to provision client login";
+      if (/already exists|taken|duplicate/i.test(message)) {
+        res.status(409).json({ error: "Admin email already has a Clerk account" });
+        return;
+      }
+      res.status(502).json({ error: "Failed to provision client login" });
+      return;
+    }
 
     const usage = await getTenantUsage(tenant._id.toString());
     res.status(201).json(
-      adminTenantSchema.parse({
+      createTenantResponseSchema.parse({
         ...toAdminTenant(tenant),
         usage,
+        clientEntryPath: `/t/${tenant.slug}`,
+        adminEmail: input.adminEmail,
       }),
     );
   });

@@ -3,6 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { TenantsPage } from "../src/pages/admin/TenantsPage";
 
+const defaultFeatureFlags = {
+  socialListening: false,
+  competitorAnalytics: false,
+  aiReplies: false,
+  googleReviews: false,
+};
+
 describe("TenantsPage", () => {
   it("shows tenant list from api", async () => {
     vi.stubGlobal(
@@ -16,6 +23,7 @@ describe("TenantsPage", () => {
             status: "active",
             primaryColor: "#7c3aed",
             logoUrl: null,
+            featureFlags: defaultFeatureFlags,
             usage: { surveys: 2, submissions: 11, users: 3 },
           },
         ],

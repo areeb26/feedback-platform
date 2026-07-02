@@ -1,4 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
+import { UserButton } from "@clerk/react";
 
 export function AdminLayout() {
   return (
@@ -12,6 +13,9 @@ export function AdminLayout() {
         }}
       >
         <h1 style={{ fontSize: 18, marginBottom: 24 }}>Platform Admin</h1>
+        <div style={{ marginBottom: 24 }}>
+          <UserButton afterSignOutUrl="/" />
+        </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <Link to="/admin/tenants" style={{ color: "#fff" }}>
             Tenants
