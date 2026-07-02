@@ -9,7 +9,7 @@
     "mobile"
   ],
   "scripts": {
-    "test": "npm run build --workspace=packages/shared && npm run test --workspace=server && npm run test --workspace=web",
+    "test": "npm run build --workspace=packages/shared && npm run test --workspace=server && npm run test --workspace=web && npm run test --workspace=@feedback-platform/mobile",
     "dev:server": "npm run dev --workspace=server",
     "dev:web": "npm run dev --workspace=web",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=server && npm run build --workspace=web",

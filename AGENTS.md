@@ -124,9 +124,9 @@ See `.env.example`. Required for production: `MONGODB_URI`, `CLERK_SECRET_KEY`, 
 | 1 | Monorepo, auth, tenant isolation | Done |
 | 2 | Super-admin, tenant shell, locations | Done |
 | 3 | Surveys, submissions, customers, incidents | Done |
-| 4 | Overview + incident analytics dashboards | In progress (uncommitted work in branch) |
-| 5 | Reviews, listings, AI replies | Partial (reviews list/import/reply done) |
-| 6 | Mobile app | Not started |
+| 4 | Overview + incident/review analytics dashboards | Done |
+| 5 | Reviews, listings, competitors, social listening, AI replies | Done (social listening = empty-state UI by design) |
+| 6 | Mobile app (Expo) | Done (core flows + tests; EAS release pipeline optional) |
 
 ## Agent rules (never break)
 

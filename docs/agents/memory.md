@@ -111,7 +111,7 @@ Web tests use Vitest + Testing Library; mock `global.fetch`.
 
 ### Current build phases
 
-Phases 1–3 complete. Phase 4 (overview + incident analytics) in active development. Phase 5 (reviews partial). Phase 6 (mobile) not started.
+Phases 1–6 complete for v1 scope. Social Listening ships as an intentional empty-state page until a provider is wired.
 
 ### What this repo does NOT have
 
