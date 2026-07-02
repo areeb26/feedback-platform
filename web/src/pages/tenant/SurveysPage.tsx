@@ -1,25 +1,39 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
+import { bilingualLabel } from "@feedback-platform/shared";
 import {
+  buildSurveyLink,
   createSurvey,
   deleteSurvey,
   fetchSurveys,
   formatSurveyDate,
   type Survey,
 } from "../../api/surveys";
+import { fetchLocations, type Location } from "../../api/tenant";
 
 const defaultQuestions = [
-  { id: "q1", type: "rating" as const, label: "Overall experience", required: true },
+  {
+    id: "q1",
+    type: "rating" as const,
+    label: bilingualLabel("Overall experience", "مجموعی تجربہ"),
+    required: true,
+  },
 ];
 
 export function SurveysPage() {
   const { slug = "" } = useParams();
   const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
 
   async function loadSurveys() {
-    setSurveys(await fetchSurveys(slug));
+    const [surveyRows, locationRows] = await Promise.all([
+      fetchSurveys(slug),
+      fetchLocations(slug),
+    ]);
+    setSurveys(surveyRows);
+    setLocations(locationRows);
   }
 
   useEffect(() => {
@@ -39,6 +53,14 @@ export function SurveysPage() {
     }
     await deleteSurvey(slug, survey.id);
     await loadSurveys();
+  }
+
+  function copyLink(survey: Survey, channel: "in_store" | "delivery") {
+    const locationId = survey.locationId ?? locations[0]?.id;
+    const path = buildSurveyLink(survey.previewSlug, { channel, locationId });
+    const url = `${window.location.origin}${path}`;
+    void navigator.clipboard.writeText(url);
+    window.alert("Survey link copied");
   }
 
   if (error) {
@@ -72,6 +94,7 @@ export function SurveysPage() {
           <tr>
             <th align="left">Name</th>
             <th align="left">Preview Link</th>
+            <th align="left">QR Links</th>
             <th align="left">Submissions</th>
             <th align="left">Created At</th>
             <th align="left">Actions</th>
@@ -86,6 +109,14 @@ export function SurveysPage() {
                   Preview Link
                 </Link>
               </td>
+              <td>
+                <button type="button" onClick={() => copyLink(survey, "in_store")}>
+                  In-store
+                </button>{" "}
+                <button type="button" onClick={() => copyLink(survey, "delivery")}>
+                  Delivery
+                </button>
+              </td>
               <td>{survey.submissionCount}</td>
               <td>{formatSurveyDate(survey.createdAt)}</td>
               <td>
@@ -98,7 +129,8 @@ export function SurveysPage() {
         </tbody>
       </table>
       <p style={{ marginTop: 16 }}>
-        Showing 1 - {surveys.length} of {surveys.length} record(s).
+        Surveys support bilingual public forms with channel-aware follow-up for low
+        ratings.
       </p>
     </div>
   );

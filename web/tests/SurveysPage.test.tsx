@@ -2,7 +2,27 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { bilingualLabel, defaultSurveyFollowUp } from "@feedback-platform/shared";
 import { SurveysPage } from "../src/pages/tenant/SurveysPage";
+
+const surveyRow = {
+  id: "survey_1",
+  name: "Call Centre Survey",
+  previewSlug: "abc123",
+  previewPath: "/s/abc123",
+  locationId: null,
+  submissionCount: 0,
+  createdAt: "2026-05-25T14:53:00.000Z",
+  questions: [
+    {
+      id: "q1",
+      type: "rating",
+      label: bilingualLabel("Overall experience", "مجموعی تجربہ"),
+      required: true,
+    },
+  ],
+  followUp: defaultSurveyFollowUp(),
+};
 
 describe("SurveysPage", () => {
   it("shows surveys table and creates a survey", async () => {
@@ -15,47 +35,27 @@ describe("SurveysPage", () => {
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({
-          id: "survey_1",
-          name: "Call Centre Survey",
-          previewSlug: "abc123",
-          previewPath: "/s/abc123",
-          locationId: null,
-          submissionCount: 0,
-          createdAt: "2026-05-25T14:53:00.000Z",
-          questions: [
-            {
-              id: "q1",
-              type: "rating",
-              label: "Overall experience",
-              required: true,
-            },
-          ],
-        }),
+        json: async () => [],
       })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => [
-          {
-            id: "survey_1",
-            name: "Call Centre Survey",
-            previewSlug: "abc123",
-            previewPath: "/s/abc123",
-            locationId: null,
-            submissionCount: 0,
-            createdAt: "2026-05-25T14:53:00.000Z",
-            questions: [
-              {
-                id: "q1",
-                type: "rating",
-                label: "Overall experience",
-                required: true,
-              },
-            ],
-          },
-        ],
+        json: async () => surveyRow,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [surveyRow],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
       });
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal(
+      "alert",
+      vi.fn(() => {
+        /* noop */
+      }),
+    );
 
     render(
       <MemoryRouter initialEntries={["/t/hafiz-sweets/surveys"]}>

@@ -28,6 +28,11 @@ const incidentSchema = new Schema(
     },
     timeline: { type: [timelineEventSchema], required: true },
     locationId: { type: Schema.Types.ObjectId, ref: "Location" },
+    channel: {
+      type: String,
+      enum: ["in_store", "takeaway", "delivery"],
+    },
+    issueCategory: { type: String },
     assignees: { type: [String], default: [] },
   },
   { timestamps: true },
@@ -38,6 +43,8 @@ incidentSchema.index({ tenantId: 1, createdAt: -1 });
 export type IncidentDocument = InferSchemaType<typeof incidentSchema> & {
   _id: mongoose.Types.ObjectId;
   createdAt: Date;
+  channel?: "in_store" | "takeaway" | "delivery" | null;
+  issueCategory?: string | null;
 };
 
 export const Incident =

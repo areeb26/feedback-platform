@@ -8,18 +8,17 @@ import {
   type CreateSurveyRequest,
   type PublicSurvey,
   type SubmitSurveyRequest,
+  type SubmitSurveyResponse,
   type Survey,
   type UpdateSurveyRequest,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const surveyListSchema = surveySchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
-
 export async function fetchSurveys(slug: string): Promise<Survey[]> {
-  const response = await fetch(`${tenantBase(slug)}/surveys`);
+  const response = await apiFetch(`${tenantBase(slug)}/surveys`);
   if (!response.ok) {
     throw new Error("Failed to load surveys");
   }
@@ -31,7 +30,7 @@ export async function createSurvey(
   input: CreateSurveyRequest,
 ): Promise<Survey> {
   const body = createSurveyRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/surveys`, {
+  const response = await apiFetch(`${tenantBase(slug)}/surveys`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -48,7 +47,7 @@ export async function updateSurvey(
   input: UpdateSurveyRequest,
 ): Promise<Survey> {
   const body = updateSurveyRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/surveys/${surveyId}`, {
+  const response = await apiFetch(`${tenantBase(slug)}/surveys/${surveyId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -63,7 +62,7 @@ export async function deleteSurvey(
   slug: string,
   surveyId: string,
 ): Promise<void> {
-  const response = await fetch(`${tenantBase(slug)}/surveys/${surveyId}`, {
+  const response = await apiFetch(`${tenantBase(slug)}/surveys/${surveyId}`, {
     method: "DELETE",
   });
   if (!response.ok) {
@@ -73,8 +72,9 @@ export async function deleteSurvey(
 
 export async function fetchPublicSurvey(
   previewSlug: string,
+  query = "",
 ): Promise<PublicSurvey> {
-  const response = await fetch(`/api/public/surveys/${previewSlug}`);
+  const response = await fetch(`/api/public/surveys/${previewSlug}${query}`);
   if (!response.ok) {
     throw new Error("Failed to load survey");
   }
@@ -84,7 +84,7 @@ export async function fetchPublicSurvey(
 export async function submitPublicSurvey(
   previewSlug: string,
   input: SubmitSurveyRequest,
-) {
+): Promise<SubmitSurveyResponse> {
   const body = submitSurveyRequestSchema.parse(input);
   const response = await fetch(`/api/public/surveys/${previewSlug}/submit`, {
     method: "POST",
@@ -97,6 +97,21 @@ export async function submitPublicSurvey(
   return submitSurveyResponseSchema.parse(await response.json());
 }
 
+export function buildSurveyLink(
+  previewSlug: string,
+  input: { channel?: string; locationId?: string },
+) {
+  const params = new URLSearchParams();
+  if (input.channel) {
+    params.set("channel", input.channel);
+  }
+  if (input.locationId) {
+    params.set("location", input.locationId);
+  }
+  const query = params.toString();
+  return `/s/${previewSlug}${query ? `?${query}` : ""}`;
+}
+
 export function formatSurveyDate(isoDate: string) {
   const date = new Date(isoDate);
   return new Intl.DateTimeFormat("en-US", {
@@ -107,3 +122,5 @@ export function formatSurveyDate(isoDate: string) {
     hour12: false,
   }).format(date);
 }
+
+export type { Survey };

@@ -1,16 +1,16 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { overviewSchema, surveySchema } from "@feedback-platform/shared";
+import { overviewSchema, surveySchema, locationSchema } from "@feedback-platform/shared";
 import { createApp } from "../src/app.js";
 import { Incident } from "../src/models/incident.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
+import {
+  defaultRatingQuestion,
+  submitMeta,
+} from "./helpers/feedbackIntake.js";
 
 registerTestDbHooks();
-
-const defaultQuestions = [
-  { id: "q1", type: "rating" as const, label: "Overall experience", required: true },
-];
 
 async function seedTenantApp() {
   await Tenant.create({
@@ -34,17 +34,24 @@ describe("GET /api/tenant/by-slug/:slug/overview", () => {
       (
         await request(tenantApp)
           .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-          .send({ name: "Delivery Survey", questions: defaultQuestions })
+          .send({ name: "Delivery Survey", questions: [defaultRatingQuestion] })
       ).body,
     );
 
     await request(publicApp)
       .post(`/api/public/surveys/${survey.previewSlug}/submit`)
-      .send({ answers: [{ questionId: "q1", value: 5 }] });
+      .send({
+        ...submitMeta("delivery", "en"),
+        answers: [{ questionId: "q1", value: 5 }],
+      });
 
     await request(publicApp)
       .post(`/api/public/surveys/${survey.previewSlug}/submit`)
-      .send({ answers: [{ questionId: "q1", value: 1 }] });
+      .send({
+        ...submitMeta("delivery", "en"),
+        issueCategory: "packaging",
+        answers: [{ questionId: "q1", value: 1 }],
+      });
 
     const incident = await Incident.findOne();
     if (incident) {
@@ -80,23 +87,31 @@ describe("GET /api/tenant/by-slug/:slug/overview", () => {
       (
         await request(tenantApp)
           .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-          .send({ name: "Delivery Survey", questions: defaultQuestions })
+          .send({ name: "Delivery Survey", questions: [defaultRatingQuestion] })
       ).body,
     );
     const dineInSurvey = surveySchema.parse(
       (
         await request(tenantApp)
           .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-          .send({ name: "Dine-in Survey", questions: defaultQuestions })
+          .send({ name: "Dine-in Survey", questions: [defaultRatingQuestion] })
       ).body,
     );
 
     await request(publicApp)
       .post(`/api/public/surveys/${deliverySurvey.previewSlug}/submit`)
-      .send({ answers: [{ questionId: "q1", value: 1 }] });
+      .send({
+        ...submitMeta("delivery", "en"),
+        issueCategory: "temperature",
+        answers: [{ questionId: "q1", value: 1 }],
+      });
     await request(publicApp)
       .post(`/api/public/surveys/${dineInSurvey.previewSlug}/submit`)
-      .send({ answers: [{ questionId: "q1", value: 1 }] });
+      .send({
+        ...submitMeta("in_store", "en"),
+        issueCategory: "service",
+        answers: [{ questionId: "q1", value: 1 }],
+      });
 
     const response = await request(tenantApp).get(
       `/api/tenant/by-slug/hafiz-sweets/overview?surveyId=${deliverySurvey.id}`,
@@ -117,5 +132,72 @@ describe("GET /api/tenant/by-slug/:slug/overview", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toBe("Invalid request");
+  });
+
+  it("filters metrics by location label", async () => {
+    const tenantApp = await seedTenantApp();
+    const publicApp = createApp();
+
+    const deliveryLocation = locationSchema.parse(
+      (
+        await request(tenantApp)
+          .post("/api/tenant/by-slug/hafiz-sweets/locations")
+          .send({ name: "Delivery Branch", labels: ["delivery"] })
+      ).body,
+    );
+    const dineInLocation = locationSchema.parse(
+      (
+        await request(tenantApp)
+          .post("/api/tenant/by-slug/hafiz-sweets/locations")
+          .send({ name: "Dine-in Branch", labels: ["dine-in"] })
+      ).body,
+    );
+
+    const deliverySurvey = surveySchema.parse(
+      (
+        await request(tenantApp)
+          .post("/api/tenant/by-slug/hafiz-sweets/surveys")
+          .send({
+            name: "Delivery Survey",
+            locationId: deliveryLocation.id,
+            questions: [defaultRatingQuestion],
+          })
+      ).body,
+    );
+    const dineInSurvey = surveySchema.parse(
+      (
+        await request(tenantApp)
+          .post("/api/tenant/by-slug/hafiz-sweets/surveys")
+          .send({
+            name: "Dine-in Survey",
+            locationId: dineInLocation.id,
+            questions: [defaultRatingQuestion],
+          })
+      ).body,
+    );
+
+    await request(publicApp)
+      .post(`/api/public/surveys/${deliverySurvey.previewSlug}/submit`)
+      .send({
+        ...submitMeta("delivery", "en"),
+        answers: [{ questionId: "q1", value: 5 }],
+      });
+    await request(publicApp)
+      .post(`/api/public/surveys/${dineInSurvey.previewSlug}/submit`)
+      .send({
+        ...submitMeta("in_store", "en"),
+        issueCategory: "food_quality",
+        answers: [{ questionId: "q1", value: 1 }],
+      });
+
+    const response = await request(tenantApp).get(
+      "/api/tenant/by-slug/hafiz-sweets/overview?label=delivery",
+    );
+
+    expect(response.status).toBe(200);
+    const overview = overviewSchema.parse(response.body);
+    expect(overview.submissions).toBe(1);
+    expect(overview.totalIncidents).toBe(0);
+    expect(overview.smileScore).toBe(100);
   });
 });

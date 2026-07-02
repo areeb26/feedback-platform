@@ -6,6 +6,8 @@ const locationSchema = new Schema(
     name: { type: String, required: true },
     address: { type: String },
     labels: { type: [String], default: [] },
+    googlePlaceId: { type: String },
+    assigneeUserIds: { type: [String], default: [] },
   },
   { timestamps: true },
 );

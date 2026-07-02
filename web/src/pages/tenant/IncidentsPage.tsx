@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
+  exportIncidentsUrl,
   fetchIncidents,
   formatIncidentDate,
   timelineLabel,
@@ -48,7 +49,9 @@ export function IncidentsPage() {
         }}
       >
         <h1>Incidents</h1>
-        {surveys[0] ? (
+        <div style={{ display: "flex", gap: 8 }}>
+          <a href={exportIncidentsUrl(slug)}>Export CSV</a>
+          {surveys[0] ? (
           <button
             type="button"
             onClick={() =>
@@ -58,6 +61,7 @@ export function IncidentsPage() {
             Create Submission
           </button>
         ) : null}
+        </div>
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -69,6 +73,8 @@ export function IncidentsPage() {
             <th align="left">Rating</th>
             <th align="left">Survey</th>
             <th align="left">Location</th>
+            <th align="left">Channel</th>
+            <th align="left">Issue</th>
             <th align="left">Email</th>
             <th align="left">Actions</th>
           </tr>
@@ -86,6 +92,8 @@ export function IncidentsPage() {
               <td>{incident.rating ?? ""}</td>
               <td>{incident.surveyName}</td>
               <td>{incident.locationName ?? ""}</td>
+              <td>{incident.channel ?? ""}</td>
+              <td>{incident.issueCategory ?? ""}</td>
               <td>{incident.customerEmail ?? ""}</td>
               <td style={{ display: "flex", gap: 8 }}>
                 {incident.status === "created" ? (

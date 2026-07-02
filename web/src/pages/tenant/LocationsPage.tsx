@@ -38,6 +38,36 @@ export function LocationsPage() {
     await loadLocations();
   }
 
+  async function handleAssignees(location: Location) {
+    const next = window.prompt(
+      "Assignee Clerk user IDs (comma-separated)",
+      location.assigneeUserIds.join(", "),
+    );
+    if (next === null) {
+      return;
+    }
+    const assigneeUserIds = next
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    await updateLocation(slug, location.id, { assigneeUserIds });
+    await loadLocations();
+  }
+
+  async function handleGooglePlaceId(location: Location) {
+    const next = window.prompt(
+      "Google Place ID for review nudge links",
+      location.googlePlaceId ?? "",
+    );
+    if (next === null) {
+      return;
+    }
+    await updateLocation(slug, location.id, {
+      googlePlaceId: next.trim() || null,
+    });
+    await loadLocations();
+  }
+
   if (error) {
     return <div>{error}</div>;
   }
@@ -56,10 +86,22 @@ export function LocationsPage() {
       </form>
       <ul>
         {locations.map((location) => (
-          <li key={location.id}>
-            {location.name}
+          <li key={location.id} style={{ marginBottom: 12 }}>
+            <strong>{location.name}</strong>
+            <div style={{ fontSize: 14, color: "#555" }}>
+              Assignees: {location.assigneeUserIds.join(", ") || "None"}
+            </div>
+            <div style={{ fontSize: 14, color: "#555" }}>
+              Google Place ID: {location.googlePlaceId ?? "Not set"}
+            </div>
             <button type="button" onClick={() => handleRename(location)}>
-              Edit
+              Edit name
+            </button>{" "}
+            <button type="button" onClick={() => handleAssignees(location)}>
+              Assignees
+            </button>{" "}
+            <button type="button" onClick={() => handleGooglePlaceId(location)}>
+              Google Place ID
             </button>
           </li>
         ))}

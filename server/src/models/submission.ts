@@ -15,6 +15,13 @@ const submissionSchema = new Schema(
     locationId: { type: Schema.Types.ObjectId, ref: "Location" },
     customerId: { type: Schema.Types.ObjectId, ref: "Customer" },
     rating: { type: Number },
+    channel: {
+      type: String,
+      enum: ["in_store", "takeaway", "delivery"],
+      required: true,
+    },
+    locale: { type: String, enum: ["en", "ur"], required: true },
+    issueCategory: { type: String },
     answers: { type: [submissionAnswerSchema], required: true },
   },
   { timestamps: true },

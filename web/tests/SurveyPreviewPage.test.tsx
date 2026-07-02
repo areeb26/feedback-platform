@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { bilingualLabel } from "@feedback-platform/shared";
 import { SurveyPreviewPage } from "../src/pages/public/SurveyPreviewPage";
 
 describe("SurveyPreviewPage", () => {
@@ -19,10 +20,27 @@ describe("SurveyPreviewPage", () => {
             {
               id: "q1",
               type: "rating",
-              label: "Overall experience",
+              label: bilingualLabel("Overall experience", "مجموعی تجربہ"),
               required: true,
             },
           ],
+          followUp: {
+            enabled: true,
+            triggerMaxRating: 3,
+            choicesByChannel: {
+              in_store: [
+                {
+                  id: "food_quality",
+                  label: bilingualLabel("Food quality", "کھانے کا معیار"),
+                },
+              ],
+              takeaway: [],
+              delivery: [],
+            },
+          },
+          channel: "in_store",
+          locationId: null,
+          locationName: null,
         }),
       })
       .mockResolvedValueOnce({
@@ -35,16 +53,14 @@ describe("SurveyPreviewPage", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(
-      <MemoryRouter initialEntries={["/s/abc123"]}>
+      <MemoryRouter initialEntries={["/s/abc123?channel=in_store"]}>
         <Routes>
           <Route path="/s/:previewSlug" element={<SurveyPreviewPage />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    await user.type(await screen.findByLabelText("Name"), "Areeb");
-    await user.type(screen.getByLabelText("Phone"), "+923001234567");
-    await user.click(screen.getByRole("button", { name: "Submit feedback" }));
+    await user.click(await screen.findByRole("button", { name: "Submit feedback" }));
 
     expect(await screen.findByText("Thank you!")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(

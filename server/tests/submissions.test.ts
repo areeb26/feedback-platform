@@ -6,12 +6,12 @@ import { Customer } from "../src/models/customer.js";
 import { Submission } from "../src/models/submission.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
+import {
+  defaultRatingQuestion,
+  submitMeta,
+} from "./helpers/feedbackIntake.js";
 
 registerTestDbHooks();
-
-const defaultQuestions = [
-  { id: "q1", type: "rating" as const, label: "Overall experience", required: true },
-];
 
 async function seedSurvey() {
   await Tenant.create({
@@ -27,7 +27,7 @@ async function seedSurvey() {
 
   const created = await request(app)
     .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-    .send({ name: "Delivery Survey", questions: defaultQuestions });
+    .send({ name: "Delivery Survey", questions: [defaultRatingQuestion] });
 
   return surveySchema.parse(created.body);
 }
@@ -40,6 +40,7 @@ describe("POST /api/public/surveys/:previewSlug/submit", () => {
     const response = await request(app)
       .post(`/api/public/surveys/${survey.previewSlug}/submit`)
       .send({
+        ...submitMeta("delivery", "en"),
         name: "Areeb",
         phone: "+923001234567",
         answers: [{ questionId: "q1", value: 4 }],
@@ -69,6 +70,7 @@ describe("GET /api/tenant/by-slug/:slug/customers", () => {
     await request(publicApp)
       .post(`/api/public/surveys/${survey.previewSlug}/submit`)
       .send({
+        ...submitMeta("in_store", "en"),
         name: "Areeb",
         phone: "+923001234567",
         answers: [{ questionId: "q1", value: 4 }],

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { channelSchema, surveyLocaleSchema } from "./feedbackIntake.js";
 
 export const incidentTimelineEventSchema = z.object({
   status: z.enum(["created", "reviewed", "resolved"]),
@@ -17,6 +18,8 @@ export const incidentSchema = z.object({
   surveyName: z.string(),
   locationName: z.string().nullable(),
   customerEmail: z.string().nullable(),
+  channel: channelSchema.nullable(),
+  issueCategory: z.string().nullable(),
   assignees: z.array(z.string()),
 });
 
@@ -35,6 +38,9 @@ export const createIncidentRequestSchema = z.object({
   name: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  channel: channelSchema.default("in_store"),
+  locale: surveyLocaleSchema.default("en"),
+  issueCategory: z.string().optional(),
 });
 
 export type CreateIncidentRequest = z.infer<typeof createIncidentRequestSchema>;

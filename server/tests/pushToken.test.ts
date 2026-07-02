@@ -6,6 +6,10 @@ import { PushToken } from "../src/models/pushToken.js";
 import { Tenant } from "../src/models/tenant.js";
 import { createRecordingExpoPushClient } from "../src/services/expoPush.js";
 import { registerTestDbHooks } from "./db.js";
+import {
+  defaultRatingQuestion,
+  submitMeta,
+} from "./helpers/feedbackIntake.js";
 
 registerTestDbHooks();
 
@@ -79,19 +83,14 @@ describe("push notifications", () => {
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
       .send({
         name: "Branch Survey",
-        questions: [
-          {
-            id: "q1",
-            type: "rating",
-            label: "Overall",
-            required: true,
-          },
-        ],
+        questions: [defaultRatingQuestion],
       });
 
     await request(publicApp)
       .post(`/api/public/surveys/${survey.body.previewSlug}/submit`)
       .send({
+        ...submitMeta("in_store", "en"),
+        issueCategory: "food_quality",
         answers: [{ questionId: "q1", value: 1 }],
       });
 

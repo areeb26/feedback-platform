@@ -10,17 +10,13 @@ import { Submission } from "../src/models/submission.js";
 import { Survey } from "../src/models/survey.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
+import {
+  defaultRatingQuestion,
+  submitMeta,
+} from "./helpers/feedbackIntake.js";
+import { defaultSurveyFollowUp } from "@feedback-platform/shared";
 
 registerTestDbHooks();
-
-const defaultQuestions = [
-  {
-    id: "q1",
-    type: "rating" as const,
-    label: "Overall experience",
-    required: true,
-  },
-];
 
 async function seedIncident() {
   await Tenant.create({
@@ -39,13 +35,17 @@ async function seedIncident() {
     (
       await request(tenantApp)
         .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-        .send({ name: "Branch Takeaway Survey", questions: defaultQuestions })
+        .send({ name: "Branch Takeaway Survey", questions: [defaultRatingQuestion] })
     ).body,
   );
 
   await request(publicApp)
     .post(`/api/public/surveys/${survey.previewSlug}/submit`)
-    .send({ answers: [{ questionId: "q1", value: 1 }] });
+    .send({
+      ...submitMeta("takeaway", "en"),
+      issueCategory: "food_quality",
+      answers: [{ questionId: "q1", value: 1 }],
+    });
 
   const incident = await Incident.findOne();
   if (!incident) {
@@ -118,12 +118,15 @@ describe("GET /api/tenant/by-slug/:slug/analytics/incidents", () => {
       tenantId: otherTenant._id,
       name: "Other Survey",
       previewSlug: "other-survey",
-      questions: defaultQuestions,
+      questions: [defaultRatingQuestion],
+      followUp: defaultSurveyFollowUp(),
     });
     const otherSubmission = await Submission.create({
       tenantId: otherTenant._id,
       surveyId: otherSurvey._id,
       rating: 1,
+      channel: "in_store",
+      locale: "en",
       answers: [{ questionId: "q1", value: 1 }],
     });
 

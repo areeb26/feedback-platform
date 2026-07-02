@@ -7,62 +7,15 @@ import {
 } from "@feedback-platform/shared";
 import { Customer } from "../models/customer.js";
 import { Location } from "../models/location.js";
-import { Submission } from "../models/submission.js";
 import { Survey } from "../models/survey.js";
 import { Tenant } from "../models/tenant.js";
-import { maybeCreateIncidentForSubmission } from "./incidents.js";
 import type { ExpoPushClient } from "../services/expoPush.js";
 import { createNoopExpoPushClient } from "../services/expoPush.js";
-
-function extractRating(
-  answers: Array<{ questionId: string; value: string | number }>,
-  survey: { questions: Array<{ id: string; type: string }> },
-) {
-  const ratingQuestion = survey.questions.find(
-    (question) => question.type === "rating",
-  );
-  if (!ratingQuestion) {
-    return undefined;
-  }
-  const answer = answers.find(
-    (item) => item.questionId === ratingQuestion.id,
-  );
-  return typeof answer?.value === "number" ? answer.value : undefined;
-}
-
-async function upsertCustomer(input: {
-  tenantId: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  locationId?: string;
-}) {
-  const query = input.phone
-    ? { tenantId: input.tenantId, phone: input.phone }
-    : input.email
-      ? { tenantId: input.tenantId, email: input.email }
-      : null;
-
-  let customer = query ? await Customer.findOne(query) : null;
-
-  if (!customer) {
-    customer = await Customer.create({
-      tenantId: input.tenantId,
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      mostRecentLocationId: input.locationId,
-    });
-    return customer;
-  }
-
-  if (input.name) customer.name = input.name;
-  if (input.email) customer.email = input.email;
-  if (input.phone) customer.phone = input.phone;
-  if (input.locationId) customer.mostRecentLocationId = input.locationId;
-  await customer.save();
-  return customer;
-}
+import { FeedbackIntakeValidationError, resolveSubmissionLocationId } from "../services/feedbackIntakeValidation.js";
+import {
+  extractRating,
+  recordFeedback,
+} from "../services/submissionIntake.js";
 
 export function createPublicSubmissionRoutes(
   expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
@@ -72,51 +25,72 @@ export function createPublicSubmissionRoutes(
   router.post(
     "/surveys/:previewSlug/submit",
     async (req: Request, res: Response) => {
-      const input = submitSurveyRequestSchema.parse(req.body);
-      const survey = await Survey.findOne({ previewSlug: req.params.previewSlug });
-      if (!survey) {
-        res.status(404).json({ error: "Survey not found" });
-        return;
+      try {
+        const input = submitSurveyRequestSchema.parse(req.body);
+        const survey = await Survey.findOne({
+          previewSlug: req.params.previewSlug,
+        });
+        if (!survey) {
+          res.status(404).json({ error: "Survey not found" });
+          return;
+        }
+
+        const tenant = await Tenant.findById(survey.tenantId);
+        if (!tenant || tenant.status === "suspended") {
+          res.status(404).json({ error: "Survey not found" });
+          return;
+        }
+
+        const locationId = resolveSubmissionLocationId({
+          requestLocationId: input.locationId,
+          surveyLocationId: survey.locationId?.toString() ?? null,
+        });
+
+        if (locationId) {
+          const location = await Location.findOne({
+            _id: locationId,
+            tenantId: tenant._id,
+          });
+          if (!location) {
+            res.status(400).json({ error: "Invalid location for survey" });
+            return;
+          }
+        }
+
+        const { submission, reviewNudge } = await recordFeedback({
+          tenantId: tenant._id,
+          tenantName: tenant.name,
+          surveyId: survey._id,
+          locationId,
+          customer: {
+            name: input.name,
+            email: input.email,
+            phone: input.phone,
+          },
+          rating: extractRating(input.answers, survey),
+          channel: input.channel,
+          locale: input.locale,
+          issueCategory: input.issueCategory,
+          followUp: survey.followUp,
+          answers: input.answers,
+          incidentPolicy: "optional",
+          expoPushClient,
+        });
+
+        res.status(201).json(
+          submitSurveyResponseSchema.parse({
+            submissionId: submission._id.toString(),
+            message: "Thank you for your feedback",
+            reviewNudge,
+          }),
+        );
+      } catch (error) {
+        if (error instanceof FeedbackIntakeValidationError) {
+          res.status(400).json({ error: error.message });
+          return;
+        }
+        throw error;
       }
-
-      const tenant = await Tenant.findById(survey.tenantId);
-      if (!tenant || tenant.status === "suspended") {
-        res.status(404).json({ error: "Survey not found" });
-        return;
-      }
-
-      const customer = await upsertCustomer({
-        tenantId: tenant._id.toString(),
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        locationId: survey.locationId?.toString(),
-      });
-
-      const submission = await Submission.create({
-        tenantId: tenant._id,
-        surveyId: survey._id,
-        locationId: survey.locationId,
-        customerId: customer._id,
-        rating: extractRating(input.answers, survey),
-        answers: input.answers,
-      });
-
-      await maybeCreateIncidentForSubmission({
-        tenantId: tenant._id.toString(),
-        tenantName: tenant.name,
-        submissionId: submission._id.toString(),
-        rating: submission.rating ?? undefined,
-        locationId: survey.locationId?.toString(),
-        expoPushClient,
-      });
-
-      res.status(201).json(
-        submitSurveyResponseSchema.parse({
-          submissionId: submission._id.toString(),
-          message: "Thank you for your feedback",
-        }),
-      );
     },
   );
 

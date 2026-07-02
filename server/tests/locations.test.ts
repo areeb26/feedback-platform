@@ -36,6 +36,8 @@ describe("POST /api/tenant/by-slug/:slug/locations", () => {
     expect(body.name).toBe("Memon Goth");
     expect(body.address).toBe("Karachi");
     expect(body.labels).toEqual([]);
+    expect(body.googlePlaceId).toBeNull();
+    expect(body.assigneeUserIds).toEqual([]);
   });
 });
 

@@ -5,6 +5,8 @@ export const locationSchema = z.object({
   name: z.string(),
   address: z.string().nullable(),
   labels: z.array(z.string()),
+  googlePlaceId: z.string().nullable(),
+  assigneeUserIds: z.array(z.string()),
 });
 
 export type Location = z.infer<typeof locationSchema>;
@@ -21,6 +23,8 @@ export const updateLocationRequestSchema = z.object({
   name: z.string().min(1).optional(),
   address: z.string().nullable().optional(),
   labels: z.array(z.string()).optional(),
+  googlePlaceId: z.string().nullable().optional(),
+  assigneeUserIds: z.array(z.string()).optional(),
 });
 
 export type UpdateLocationRequest = z.infer<typeof updateLocationRequestSchema>;

@@ -14,6 +14,8 @@ const incident = {
   surveyName: "Branch Takeaway Survey",
   locationName: "Memon Goth",
   customerEmail: null,
+  channel: "delivery",
+  issueCategory: "packaging",
   assignees: [],
 };
 

@@ -1,11 +1,40 @@
 import mongoose, { Schema, type InferSchemaType } from "mongoose";
 
+const localizedLabelSchema = new Schema(
+  {
+    en: { type: String, required: true },
+    ur: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const issueCategoryOptionSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    label: { type: localizedLabelSchema, required: true },
+  },
+  { _id: false },
+);
+
 const surveyQuestionSchema = new Schema(
   {
     id: { type: String, required: true },
     type: { type: String, enum: ["rating", "text"], required: true },
-    label: { type: String, required: true },
+    label: { type: localizedLabelSchema, required: true },
     required: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
+const surveyFollowUpSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    triggerMaxRating: { type: Number, default: 3 },
+    choicesByChannel: {
+      in_store: { type: [issueCategoryOptionSchema], required: true },
+      takeaway: { type: [issueCategoryOptionSchema], required: true },
+      delivery: { type: [issueCategoryOptionSchema], required: true },
+    },
   },
   { _id: false },
 );
@@ -17,6 +46,7 @@ const surveySchema = new Schema(
     name: { type: String, required: true },
     previewSlug: { type: String, required: true, unique: true },
     questions: { type: [surveyQuestionSchema], required: true },
+    followUp: { type: surveyFollowUpSchema, required: true },
   },
   { timestamps: true },
 );

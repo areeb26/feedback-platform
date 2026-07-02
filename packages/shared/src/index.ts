@@ -2,12 +2,16 @@ export { healthResponseSchema, type HealthResponse } from "./health.js";
 export {
   adminTenantSchema,
   createTenantRequestSchema,
+  createTenantResponseSchema,
   tenantProfileSchema,
+  tenantPublicBrandingSchema,
   tenantUsageSchema,
   updateTenantRequestSchema,
   type AdminTenant,
   type CreateTenantRequest,
+  type CreateTenantResponse,
   type TenantProfile,
+  type TenantPublicBranding,
   type UpdateTenantRequest,
 } from "./tenant.js";
 export {
@@ -42,22 +46,44 @@ export {
 } from "./competitor.js";
 export {
   createSurveyRequestSchema,
+  publicSurveyQuerySchema,
   publicSurveySchema,
   surveyQuestionSchema,
   surveySchema,
   updateSurveyRequestSchema,
   type CreateSurveyRequest,
   type PublicSurvey,
+  type PublicSurveyQuery,
   type Survey,
   type SurveyQuestion,
   type UpdateSurveyRequest,
 } from "./survey.js";
 export {
+  bilingualLabel,
+  buildGoogleReviewUrl,
+  channelSchema,
+  defaultSurveyFollowUp,
+  INCIDENT_RATING_THRESHOLD,
+  issueCategoryOptionSchema,
+  labelForLocale,
+  localizedLabelSchema,
+  REVIEW_NUDGE_MIN_RATING,
+  surveyFollowUpSchema,
+  surveyLocaleSchema,
+  type Channel,
+  type IssueCategoryOption,
+  type LocalizedLabel,
+  type SurveyFollowUp,
+  type SurveyLocale,
+} from "./feedbackIntake.js";
+export {
   customerSchema,
+  reviewNudgeSchema,
   submitSurveyRequestSchema,
   submitSurveyResponseSchema,
   submissionAnswerSchema,
   type Customer,
+  type ReviewNudge,
   type SubmitSurveyRequest,
   type SubmitSurveyResponse,
 } from "./submission.js";
@@ -88,6 +114,7 @@ export {
   type IncidentAnalyticsQuery,
 } from "./incidentAnalytics.js";
 export {
+  createReviewRequestSchema,
   importReviewsRequestSchema,
   importReviewsResponseSchema,
   replyReviewRequestSchema,
@@ -95,6 +122,7 @@ export {
   reviewSchema,
   reviewSourceSchema,
   reviewStatusSchema,
+  type CreateReviewRequest,
   type ImportReviewsRequest,
   type ImportReviewsResponse,
   type ReplyReviewRequest,

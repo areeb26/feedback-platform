@@ -1,106 +1,31 @@
 import type { Request, Response } from "express";
 import {
   createIncidentRequestSchema,
-  incidentSchema,
   updateIncidentRequestSchema,
 } from "@feedback-platform/shared";
-import { Customer } from "../models/customer.js";
-import { Incident } from "../models/incident.js";
-import { Location } from "../models/location.js";
-import { Submission } from "../models/submission.js";
 import { Survey } from "../models/survey.js";
 import { Tenant } from "../models/tenant.js";
-import {
-  createIncidentForSubmission,
-  shouldCreateIncident,
-} from "../services/incidents.js";
 import {
   createNoopExpoPushClient,
   type ExpoPushClient,
 } from "../services/expoPush.js";
-import { notifyNewIncident } from "../services/pushNotifications.js";
-
-async function upsertCustomer(input: {
-  tenantId: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  locationId?: string;
-}) {
-  const query = input.phone
-    ? { tenantId: input.tenantId, phone: input.phone }
-    : input.email
-      ? { tenantId: input.tenantId, email: input.email }
-      : null;
-
-  let customer = query ? await Customer.findOne(query) : null;
-  if (!customer) {
-    customer = await Customer.create({
-      tenantId: input.tenantId,
-      name: input.name,
-      email: input.email,
-      phone: input.phone,
-      mostRecentLocationId: input.locationId,
-    });
-    return customer;
-  }
-
-  if (input.name) customer.name = input.name;
-  if (input.email) customer.email = input.email;
-  if (input.phone) customer.phone = input.phone;
-  if (input.locationId) customer.mostRecentLocationId = input.locationId;
-  await customer.save();
-  return customer;
-}
-
-async function toIncidentResponse(incident: {
-  _id: { toString(): string };
-  code: string;
-  status: "created" | "reviewed" | "resolved";
-  timeline: Array<{ status: "created" | "reviewed" | "resolved"; at: Date }>;
-  createdAt: Date;
-  submissionId: { toString(): string };
-  assignees?: string[] | null;
-}) {
-  const submission = await Submission.findById(incident.submissionId);
-  const survey = submission
-    ? await Survey.findById(submission.surveyId)
-    : null;
-  const location = submission?.locationId
-    ? await Location.findById(submission.locationId)
-    : null;
-  const customer = submission?.customerId
-    ? await Customer.findById(submission.customerId)
-    : null;
-
-  return incidentSchema.parse({
-    id: incident._id.toString(),
-    code: incident.code,
-    status: incident.status,
-    timeline: incident.timeline.map((event) => ({
-      status: event.status,
-      at: event.at.toISOString(),
-    })),
-    createdAt: incident.createdAt.toISOString(),
-    rating: submission?.rating ?? null,
-    surveyName: survey?.name ?? "Unknown survey",
-    locationName: location?.name ?? null,
-    customerEmail: customer?.email ?? null,
-    assignees: incident.assignees ?? [],
-  });
-}
+import {
+  getForTenant,
+  listForTenant,
+  updateForTenant,
+} from "../services/incidents.js";
+import { formatCsvField } from "../services/reviews.js";
+import {
+  IncidentRequiredError,
+  recordFeedback,
+} from "../services/submissionIntake.js";
 
 export function createIncidentRoutes(
   expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
 ) {
   return {
     async list(req: Request, res: Response) {
-      const incidents = await Incident.find({
-        tenantId: req.tenant!.id,
-      }).sort({ createdAt: -1 });
-      const rows = await Promise.all(
-        incidents.map((incident) => toIncidentResponse(incident)),
-      );
+      const rows = await listForTenant(req.tenant!.id);
       res.json(rows);
     },
 
@@ -121,104 +46,106 @@ export function createIncidentRoutes(
         return;
       }
 
-      const customer = await upsertCustomer({
-        tenantId: req.tenant!.id,
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        locationId: survey.locationId?.toString(),
-      });
-
-      const submission = await Submission.create({
-        tenantId: req.tenant!.id,
-        surveyId: survey._id,
-        locationId: survey.locationId,
-        customerId: customer._id,
-        rating: input.rating,
-        answers: [
-          {
-            questionId: survey.questions[0]?.id ?? "q1",
-            value: input.rating,
+      try {
+        const { incident } = await recordFeedback({
+          tenantId: tenant._id,
+          tenantName: tenant.name,
+          surveyId: survey._id,
+          locationId: survey.locationId,
+          customer: {
+            name: input.name,
+            email: input.email,
+            phone: input.phone,
           },
-        ],
-      });
-
-      const incident = shouldCreateIncident(input.rating)
-        ? await createIncidentForSubmission({
-            tenantId: tenant._id,
-            tenantName: tenant.name,
-            submissionId: submission._id,
-            locationId: survey.locationId,
-          })
-        : null;
-
-      if (!incident) {
-        res.status(400).json({
-          error: "Rating above incident threshold; no incident created",
+          rating: input.rating,
+          channel: input.channel,
+          locale: input.locale,
+          issueCategory: input.issueCategory,
+          followUp: survey.followUp,
+          answers: [
+            {
+              questionId: survey.questions[0]?.id ?? "q1",
+              value: input.rating,
+            },
+          ],
+          incidentPolicy: "required",
+          expoPushClient,
         });
-        return;
+
+        if (!incident) {
+          res.status(400).json({
+            error: "Rating above incident threshold; no incident created",
+          });
+          return;
+        }
+
+        const row = await getForTenant(
+          req.tenant!.id,
+          incident._id.toString(),
+        );
+        res.status(201).json(row);
+      } catch (error) {
+        if (error instanceof IncidentRequiredError) {
+          res.status(400).json({ error: error.message });
+          return;
+        }
+        throw error;
       }
-
-      await notifyNewIncident(
-        expoPushClient,
-        req.tenant!.id,
-        incident._id.toString(),
-        incident.code,
-      );
-
-      res.status(201).json(await toIncidentResponse(incident));
     },
 
     async update(req: Request, res: Response) {
       const input = updateIncidentRequestSchema.parse(req.body);
-      const incident = await Incident.findOne({
-        _id: req.params.incidentId,
-        tenantId: req.tenant!.id,
-      });
-      if (!incident) {
+      const row = await updateForTenant(
+        req.tenant!.id,
+        String(req.params.incidentId),
+        input,
+      );
+      if (!row) {
         res.status(404).json({ error: "Incident not found" });
         return;
       }
+      res.json(row);
+    },
 
-      incident.status = input.status;
-      incident.timeline.push({ status: input.status, at: new Date() });
-      if (input.assignees) {
-        incident.assignees = input.assignees;
+    async get(req: Request, res: Response) {
+      const row = await getForTenant(
+        req.tenant!.id,
+        String(req.params.incidentId),
+      );
+      if (!row) {
+        res.status(404).json({ error: "Incident not found" });
+        return;
       }
-      await incident.save();
+      res.json(row);
+    },
 
-      res.json(await toIncidentResponse(incident));
+    async exportCsv(req: Request, res: Response) {
+      const rows = await listForTenant(req.tenant!.id);
+      const lines = [
+        "Code,Status,Rating,Survey,Location,Channel,Issue Category,Customer Email,Created At",
+      ];
+      for (const incident of rows) {
+        lines.push(
+          [
+            formatCsvField(incident.code),
+            formatCsvField(incident.status),
+            formatCsvField(incident.rating),
+            formatCsvField(incident.surveyName),
+            formatCsvField(incident.locationName),
+            formatCsvField(incident.channel),
+            formatCsvField(incident.issueCategory),
+            formatCsvField(incident.customerEmail),
+            formatCsvField(incident.createdAt),
+          ].join(","),
+        );
+      }
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="incidents.csv"',
+      );
+      res.send(lines.join("\n"));
     },
   };
-}
-
-export async function maybeCreateIncidentForSubmission(input: {
-  tenantId: string;
-  tenantName: string;
-  submissionId: string;
-  rating?: number;
-  locationId?: string | null;
-  expoPushClient?: ExpoPushClient;
-}) {
-  if (!shouldCreateIncident(input.rating)) {
-    return null;
-  }
-
-  const incident = await createIncidentForSubmission({
-    tenantId: input.tenantId,
-    tenantName: input.tenantName,
-    submissionId: input.submissionId,
-    locationId: input.locationId,
-  });
-
-  if (input.expoPushClient) {
-    await notifyNewIncident(
-      input.expoPushClient,
-      input.tenantId,
-      incident._id.toString(),
-      incident.code,
-    );
-  }
-
-  return incident;
 }

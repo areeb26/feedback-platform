@@ -1,9 +1,16 @@
 import { z } from "zod";
+import {
+  channelSchema,
+  defaultSurveyFollowUp,
+  localizedLabelSchema,
+  surveyFollowUpSchema,
+  surveyLocaleSchema,
+} from "./feedbackIntake.js";
 
 export const surveyQuestionSchema = z.object({
   id: z.string(),
   type: z.enum(["rating", "text"]),
-  label: z.string().min(1),
+  label: localizedLabelSchema,
   required: z.boolean().default(true),
 });
 
@@ -18,6 +25,7 @@ export const surveySchema = z.object({
   submissionCount: z.number().int().nonnegative(),
   createdAt: z.string(),
   questions: z.array(surveyQuestionSchema),
+  followUp: surveyFollowUpSchema,
 });
 
 export type Survey = z.infer<typeof surveySchema>;
@@ -26,6 +34,7 @@ export const createSurveyRequestSchema = z.object({
   name: z.string().min(1),
   locationId: z.string().optional(),
   questions: z.array(surveyQuestionSchema).min(1),
+  followUp: surveyFollowUpSchema.optional(),
 });
 
 export type CreateSurveyRequest = z.infer<typeof createSurveyRequestSchema>;
@@ -34,6 +43,7 @@ export const updateSurveyRequestSchema = z.object({
   name: z.string().min(1).optional(),
   locationId: z.string().nullable().optional(),
   questions: z.array(surveyQuestionSchema).min(1).optional(),
+  followUp: surveyFollowUpSchema.optional(),
 });
 
 export type UpdateSurveyRequest = z.infer<typeof updateSurveyRequestSchema>;
@@ -43,6 +53,18 @@ export const publicSurveySchema = z.object({
   tenantName: z.string(),
   primaryColor: z.string(),
   questions: z.array(surveyQuestionSchema),
+  followUp: surveyFollowUpSchema,
+  channel: channelSchema.nullable(),
+  locationId: z.string().nullable(),
+  locationName: z.string().nullable(),
 });
 
 export type PublicSurvey = z.infer<typeof publicSurveySchema>;
+
+export const publicSurveyQuerySchema = z.object({
+  channel: channelSchema.optional(),
+  location: z.string().optional(),
+  locale: surveyLocaleSchema.optional(),
+});
+
+export type PublicSurveyQuery = z.infer<typeof publicSurveyQuerySchema>;

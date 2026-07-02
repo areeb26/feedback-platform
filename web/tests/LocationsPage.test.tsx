@@ -20,6 +20,8 @@ describe("LocationsPage", () => {
           name: "Memon Goth",
           address: null,
           labels: [],
+          googlePlaceId: null,
+          assigneeUserIds: [],
         }),
       })
       .mockResolvedValueOnce({
@@ -30,6 +32,8 @@ describe("LocationsPage", () => {
             name: "Memon Goth",
             address: null,
             labels: [],
+          googlePlaceId: null,
+          assigneeUserIds: [],
           },
         ],
       });

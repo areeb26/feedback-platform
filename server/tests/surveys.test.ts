@@ -1,9 +1,13 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
-import { surveySchema } from "@feedback-platform/shared";
+import {
+  defaultSurveyFollowUp,
+  surveySchema,
+} from "@feedback-platform/shared";
 import { createApp } from "../src/app.js";
 import { Tenant } from "../src/models/tenant.js";
 import { registerTestDbHooks } from "./db.js";
+import { defaultRatingQuestion } from "./helpers/feedbackIntake.js";
 
 registerTestDbHooks();
 
@@ -22,10 +26,6 @@ function createTenantApp() {
   });
 }
 
-const defaultQuestions = [
-  { id: "q1", type: "rating" as const, label: "Overall experience", required: true },
-];
-
 describe("POST /api/tenant/by-slug/:slug/surveys", () => {
   it("creates a survey with preview link", async () => {
     await seedTenant();
@@ -35,7 +35,7 @@ describe("POST /api/tenant/by-slug/:slug/surveys", () => {
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
       .send({
         name: "Call Centre Survey",
-        questions: defaultQuestions,
+        questions: [defaultRatingQuestion],
       });
 
     expect(response.status).toBe(201);
@@ -43,7 +43,8 @@ describe("POST /api/tenant/by-slug/:slug/surveys", () => {
     expect(body.name).toBe("Call Centre Survey");
     expect(body.previewPath).toBe(`/s/${body.previewSlug}`);
     expect(body.submissionCount).toBe(0);
-    expect(body.questions).toEqual(defaultQuestions);
+    expect(body.questions).toEqual([defaultRatingQuestion]);
+    expect(body.followUp.enabled).toBe(true);
   });
 });
 
@@ -54,7 +55,7 @@ describe("GET /api/tenant/by-slug/:slug/surveys", () => {
 
     await request(app)
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-      .send({ name: "Delivery Survey", questions: defaultQuestions });
+      .send({ name: "Delivery Survey", questions: [defaultRatingQuestion] });
 
     const response = await request(app).get(
       "/api/tenant/by-slug/hafiz-sweets/surveys",
@@ -73,7 +74,7 @@ describe("PATCH /api/tenant/by-slug/:slug/surveys/:id", () => {
 
     const created = await request(app)
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-      .send({ name: "Old Name", questions: defaultQuestions });
+      .send({ name: "Old Name", questions: [defaultRatingQuestion] });
 
     const surveyId = surveySchema.parse(created.body).id;
 
@@ -93,7 +94,7 @@ describe("DELETE /api/tenant/by-slug/:slug/surveys/:id", () => {
 
     const created = await request(app)
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-      .send({ name: "Packaging Survey", questions: defaultQuestions });
+      .send({ name: "Packaging Survey", questions: [defaultRatingQuestion] });
 
     const surveyId = surveySchema.parse(created.body).id;
 
@@ -116,7 +117,7 @@ describe("GET /api/public/surveys/:previewSlug", () => {
 
     const created = await request(app)
       .post("/api/tenant/by-slug/hafiz-sweets/surveys")
-      .send({ name: "Call Centre Survey", questions: defaultQuestions });
+      .send({ name: "Call Centre Survey", questions: [defaultRatingQuestion] });
 
     const previewSlug = surveySchema.parse(created.body).previewSlug;
 
@@ -125,11 +126,15 @@ describe("GET /api/public/surveys/:previewSlug", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({
+    expect(response.body).toMatchObject({
       name: "Call Centre Survey",
       tenantName: "Hafiz Sweets",
       primaryColor: "#7c3aed",
-      questions: defaultQuestions,
+      questions: [defaultRatingQuestion],
+      followUp: defaultSurveyFollowUp(),
+      channel: null,
+      locationId: null,
+      locationName: null,
     });
   });
 });

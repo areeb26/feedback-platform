@@ -2,10 +2,13 @@ import type { Request, Response, Router } from "express";
 import { Router as createRouter } from "express";
 import {
   createSurveyRequestSchema,
+  defaultSurveyFollowUp,
+  publicSurveyQuerySchema,
   publicSurveySchema,
   surveySchema,
   updateSurveyRequestSchema,
 } from "@feedback-platform/shared";
+import { Location } from "../models/location.js";
 import { Survey } from "../models/survey.js";
 import { Submission } from "../models/submission.js";
 import { Tenant } from "../models/tenant.js";
@@ -20,9 +23,18 @@ function toSurveyResponse(
     questions: Array<{
       id: string;
       type: "rating" | "text";
-      label: string;
+      label: { en: string; ur: string };
       required?: boolean | null;
     }>;
+    followUp: {
+      enabled: boolean;
+      triggerMaxRating: number;
+      choicesByChannel: {
+        in_store: Array<{ id: string; label: { en: string; ur: string } }>;
+        takeaway: Array<{ id: string; label: { en: string; ur: string } }>;
+        delivery: Array<{ id: string; label: { en: string; ur: string } }>;
+      };
+    };
     createdAt: Date;
   },
   submissionCount: number,
@@ -41,6 +53,7 @@ function toSurveyResponse(
       label: question.label,
       required: question.required ?? true,
     })),
+    followUp: survey.followUp,
   });
 }
 
@@ -52,6 +65,7 @@ export function createSurveyRoutes(): Router {
   const router = createRouter();
 
   router.get("/surveys/:previewSlug", async (req: Request, res: Response) => {
+    const query = publicSurveyQuerySchema.parse(req.query);
     const survey = await Survey.findOne({ previewSlug: req.params.previewSlug });
     if (!survey) {
       res.status(404).json({ error: "Survey not found" });
@@ -64,6 +78,16 @@ export function createSurveyRoutes(): Router {
       return;
     }
 
+    const locationId = query.location ?? survey.locationId?.toString() ?? null;
+    let locationName: string | null = null;
+    if (locationId) {
+      const location = await Location.findOne({
+        _id: locationId,
+        tenantId: tenant._id,
+      });
+      locationName = location?.name ?? null;
+    }
+
     res.json(
       publicSurveySchema.parse({
         name: survey.name,
@@ -73,7 +97,7 @@ export function createSurveyRoutes(): Router {
           (question: {
             id: string;
             type: "rating" | "text";
-            label: string;
+            label: { en: string; ur: string };
             required?: boolean | null;
           }) => ({
           id: question.id,
@@ -81,6 +105,10 @@ export function createSurveyRoutes(): Router {
           label: question.label,
           required: question.required ?? true,
         })),
+        followUp: survey.followUp,
+        channel: query.channel ?? null,
+        locationId,
+        locationName,
       }),
     );
   });
@@ -118,6 +146,7 @@ export function createTenantSurveyRoutes(): {
         locationId: input.locationId,
         previewSlug: generatePreviewSlug(),
         questions: input.questions,
+        followUp: input.followUp ?? defaultSurveyFollowUp(),
       });
       res.status(201).json(toSurveyResponse(survey, 0));
     },
@@ -138,6 +167,7 @@ export function createTenantSurveyRoutes(): {
         survey.locationId = input.locationId ?? undefined;
       }
       if (input.questions !== undefined) survey.questions = input.questions;
+      if (input.followUp !== undefined) survey.followUp = input.followUp;
 
       await survey.save();
       res.json(
@@ -160,4 +190,19 @@ export function createTenantSurveyRoutes(): {
       res.status(204).send();
     },
   };
+}
+
+export function buildSurveyLink(
+  previewSlug: string,
+  input: { channel?: string; locationId?: string },
+) {
+  const params = new URLSearchParams();
+  if (input.channel) {
+    params.set("channel", input.channel);
+  }
+  if (input.locationId) {
+    params.set("location", input.locationId);
+  }
+  const query = params.toString();
+  return `/s/${previewSlug}${query ? `?${query}` : ""}`;
 }
