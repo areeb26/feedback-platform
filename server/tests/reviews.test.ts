@@ -187,4 +187,29 @@ describe("tenant reviews", () => {
       '"\'=HYPERLINK(""https://example.com"")"',
     );
   });
+
+  it("creates and fetches a manual review", async () => {
+    const app = await seedTenantApp();
+
+    const created = await request(app)
+      .post("/api/tenant/by-slug/hafiz-sweets/reviews")
+      .send({
+        source: "foodpanda",
+        reviewerName: "Manual Guest",
+        rating: 4,
+        content: "Solid experience",
+        locationName: "Hafiz Sweets",
+      });
+
+    expect(created.status).toBe(201);
+    const review = reviewSchema.parse(created.body);
+    expect(review.reviewerName).toBe("Manual Guest");
+    expect(review.status).toBe("reply_not_supported");
+
+    const fetched = await request(app).get(
+      `/api/tenant/by-slug/hafiz-sweets/reviews/${review.id}`,
+    );
+    expect(fetched.status).toBe(200);
+    expect(reviewSchema.parse(fetched.body).id).toBe(review.id);
+  });
 });

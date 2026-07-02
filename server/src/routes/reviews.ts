@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  createReviewRequestSchema,
   generateRepliesRequestSchema,
   generateRepliesResponseSchema,
   importReviewsRequestSchema,
@@ -8,26 +9,27 @@ import {
   reviewListQuerySchema,
   reviewSchema,
 } from "@feedback-platform/shared";
-import { Location } from "../models/location.js";
 import { Review } from "../models/review.js";
-import {
-  buildReviewExternalId,
-  canReplyToReview,
-  defaultStatusForSource,
-  formatCsvField,
-  parseReviewCsv,
-} from "../services/reviews.js";
 import type { GoogleBusinessClient } from "../auth/googleBusiness.js";
 import type { OpenAiClient } from "../auth/openai.js";
 import {
   createNoopExpoPushClient,
   type ExpoPushClient,
 } from "../services/expoPush.js";
-import { postGoogleReviewReply } from "../services/googleReviews.js";
-import { applyAutoReplyRules } from "../services/autoReplyRules.js";
-import { notifyUnrepliedReview } from "../services/pushNotifications.js";
-
-const MAX_IMPORT_ROWS = 1000;
+import {
+  GoogleReviewReplyError,
+  createManualReview,
+  importReviewsFromCsv,
+  replyToReview,
+  ReviewReplyNotSupportedError,
+} from "../services/reviewLifecycle.js";
+import {
+  buildReviewExternalId,
+  canReplyToReview,
+  defaultStatusForSource,
+  formatCsvField,
+} from "../services/reviews.js";
+import { escapeRegex } from "../services/text.js";
 
 function toReviewResponse(review: {
   _id: { toString(): string };
@@ -91,10 +93,6 @@ function buildReviewFilter(tenantId: string, query: Record<string, unknown>) {
   return mongoFilter;
 }
 
-function escapeRegex(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function requireAiReplies(req: Request, res: Response) {
   if (!req.tenant?.featureFlags.aiReplies) {
     res.status(403).json({ error: "AI replies not enabled" });
@@ -116,145 +114,67 @@ export function createReviewRoutes(
       res.json(reviews.map(toReviewResponse));
     },
 
-    async importCsv(req: Request, res: Response) {
-      const input = importReviewsRequestSchema.parse(req.body);
-      const rows = parseReviewCsv(input.csv).slice(0, MAX_IMPORT_ROWS);
-      const tenantId = req.tenant!.id;
-      const locationNames = [
-        ...new Set(
-          rows
-            .map((row) => row.locationName)
-            .filter((name): name is string => Boolean(name)),
-        ),
-      ];
-      const locations = await Location.find({
-        tenantId,
-        name: { $in: locationNames },
-      });
-      const locationIdByName = new Map(
-        locations.map((location) => [location.name, location._id]),
-      );
-
-      const candidates = [];
-      for (const row of rows) {
-        const rating = Number(row.rating);
-        if (
-          !row.reviewerName ||
-          !row.content ||
-          !Number.isInteger(rating) ||
-          rating < 1 ||
-          rating > 5
-        ) {
-          continue;
-        }
-
-        const postedAt = row.postedAt ? new Date(row.postedAt) : new Date();
-        if (Number.isNaN(postedAt.getTime())) {
-          continue;
-        }
-
-        const externalId = buildReviewExternalId(input.source, row);
-        candidates.push({
-          tenantId,
-          source: input.source,
-          externalId,
-          reviewerName: row.reviewerName,
-          rating,
-          content: row.content,
-          locationId: row.locationName
-            ? locationIdByName.get(row.locationName)
-            : undefined,
-          locationName: row.locationName || undefined,
-          listingName: row.listingName || row.locationName || undefined,
-          categories: row.categories
-            ? row.categories.split("|").map((item) => item.trim())
-            : [],
-          status: defaultStatusForSource(input.source),
-          postedAt,
-        });
-      }
-
-      const existingReviews = await Review.find({
-        tenantId,
-        source: input.source,
-        externalId: { $in: candidates.map((review) => review.externalId) },
-      }).select("externalId");
-      const existingIds = new Set(
-        existingReviews
-          .map((review) => review.externalId)
-          .filter((externalId): externalId is string => Boolean(externalId)),
-      );
-      const newReviews = candidates.filter(
-        (review) => !existingIds.has(review.externalId),
-      );
-      if (newReviews.length > 0) {
-        const insertedReviews = await Review.insertMany(newReviews);
-        for (const review of insertedReviews) {
-          await applyAutoReplyRules({
-            tenantId,
-            review,
-            googleClient,
-          });
-          if (review.status === "not_replied") {
-            await notifyUnrepliedReview(
-              expoPushClient,
-              tenantId,
-              review._id.toString(),
-              review.reviewerName,
-            );
-          }
-        }
-      }
-
-      const imported = newReviews.length;
-      res.status(201).json(importReviewsResponseSchema.parse({ imported }));
-    },
-
-    async reply(req: Request, res: Response) {
-      const input = replyReviewRequestSchema.parse(req.body);
+    async get(req: Request, res: Response) {
       const review = await Review.findOne({
         _id: req.params.reviewId,
         tenantId: req.tenant!.id,
       });
-
       if (!review) {
         res.status(404).json({ error: "Review not found" });
         return;
       }
+      res.json(toReviewResponse(review));
+    },
 
-      if (
-        !canReplyToReview({
-          source: review.source,
-          status: review.status,
-          externalId: review.externalId,
-        })
-      ) {
-        res.status(400).json({ error: "Reply not supported for this review" });
-        return;
-      }
+    async create(req: Request, res: Response) {
+      const input = createReviewRequestSchema.parse(req.body);
+      const review = await createManualReview({
+        tenantId: req.tenant!.id,
+        ...input,
+      });
+      res.status(201).json(toReviewResponse(review));
+    },
 
-      if (review.source === "google" && googleClient) {
-        try {
-          await postGoogleReviewReply({
-            tenantId: req.tenant!.id,
-            reviewExternalId: review.externalId,
-            replyText: input.replyText,
-            client: googleClient,
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Google reply failed";
-          res.status(502).json({ error: message });
+    async importCsv(req: Request, res: Response) {
+      const input = importReviewsRequestSchema.parse(req.body);
+      const result = await importReviewsFromCsv({
+        tenantId: req.tenant!.id,
+        source: input.source,
+        csv: input.csv,
+        googleClient,
+        expoPushClient,
+      });
+      res.status(201).json(importReviewsResponseSchema.parse(result));
+    },
+
+    async reply(req: Request, res: Response) {
+      const input = replyReviewRequestSchema.parse(req.body);
+
+      try {
+        const review = await replyToReview({
+          tenantId: req.tenant!.id,
+          reviewId: String(req.params.reviewId),
+          replyText: input.replyText,
+          googleClient,
+        });
+
+        if (!review) {
+          res.status(404).json({ error: "Review not found" });
           return;
         }
+
+        res.json(toReviewResponse(review));
+      } catch (error) {
+        if (error instanceof ReviewReplyNotSupportedError) {
+          res.status(400).json({ error: error.message });
+          return;
+        }
+        if (error instanceof GoogleReviewReplyError) {
+          res.status(502).json({ error: error.message });
+          return;
+        }
+        throw error;
       }
-
-      review.status = "replied";
-      review.replyText = input.replyText;
-      review.repliedAt = new Date();
-      await review.save();
-
-      res.json(toReviewResponse(review));
     },
 
     async generateReplies(req: Request, res: Response) {

@@ -30,6 +30,14 @@ function rejectInvalidRedirectUri(res: Response, redirectUri: string) {
   return false;
 }
 
+function requireGoogleReviews(req: Request, res: Response) {
+  if (!req.tenant?.featureFlags.googleReviews) {
+    res.status(403).json({ error: "Google reviews not enabled" });
+    return false;
+  }
+  return true;
+}
+
 export function createGoogleRoutes(
   client: GoogleBusinessClient,
   expoPushClient: ExpoPushClient = createNoopExpoPushClient(),
@@ -45,6 +53,7 @@ export function createGoogleRoutes(
     },
 
     async connect(req: Request, res: Response) {
+      if (!requireGoogleReviews(req, res)) return;
       const input = googleConnectStartRequestSchema.parse(req.body);
       if (rejectInvalidRedirectUri(res, input.redirectUri)) {
         return;
@@ -71,6 +80,7 @@ export function createGoogleRoutes(
     },
 
     async callback(req: Request, res: Response) {
+      if (!requireGoogleReviews(req, res)) return;
       const input = googleConnectCallbackRequestSchema.parse(req.body);
       if (rejectInvalidRedirectUri(res, input.redirectUri)) {
         return;
@@ -123,6 +133,7 @@ export function createGoogleRoutes(
     },
 
     async sync(req: Request, res: Response) {
+      if (!requireGoogleReviews(req, res)) return;
       try {
         const result = await syncGoogleReviews({
           tenantId: req.tenant!.id,

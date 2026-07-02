@@ -3,6 +3,7 @@ import { useOutletContext, useParams } from "react-router-dom";
 import type { Review, TenantShell } from "@feedback-platform/shared";
 import {
   exportReviewsUrl,
+  createReview,
   fetchReviews,
   formatReviewDate,
   importReviewsCsv,
@@ -70,6 +71,11 @@ export function ReviewsPage() {
   const [googleConnection, setGoogleConnection] =
     useState<GoogleConnection | null>(null);
   const [googleMessage, setGoogleMessage] = useState<string | null>(null);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualReviewer, setManualReviewer] = useState("");
+  const [manualRating, setManualRating] = useState("5");
+  const [manualContent, setManualContent] = useState("");
+  const [manualLocation, setManualLocation] = useState("");
 
   const filters = useMemo(() => {
     const query: Record<string, string> = {};
@@ -87,11 +93,13 @@ export function ReviewsPage() {
   useEffect(() => {
     Promise.all([
       loadReviews(),
-      fetchGoogleConnection(slug)
-        .then(setGoogleConnection)
-        .catch(() => undefined),
+      shell.featureFlags.googleReviews
+        ? fetchGoogleConnection(slug)
+            .then(setGoogleConnection)
+            .catch(() => undefined)
+        : Promise.resolve(),
     ]).catch(() => setError("Could not load reviews"));
-  }, [slug, filters]);
+  }, [slug, filters, shell.featureFlags.googleReviews]);
 
   const unrepliedIds = reviews
     .filter((review) => review.status === "not_replied")
@@ -212,6 +220,25 @@ export function ReviewsPage() {
     }
   }
 
+  async function handleManualCreate() {
+    if (!manualReviewer.trim() || !manualContent.trim()) {
+      return;
+    }
+
+    await createReview(slug, {
+      source: "foodpanda",
+      reviewerName: manualReviewer.trim(),
+      rating: Number(manualRating),
+      content: manualContent.trim(),
+      locationName: manualLocation.trim() || undefined,
+    });
+    setShowManualEntry(false);
+    setManualReviewer("");
+    setManualContent("");
+    setManualLocation("");
+    await loadReviews();
+  }
+
   if (error) {
     return <div>{error}</div>;
   }
@@ -230,15 +257,20 @@ export function ReviewsPage() {
       >
         <h1>Reviews</h1>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {googleConnection?.status === "connected" ? (
-            <button type="button" onClick={handleGoogleSync}>
-              Sync Google Reviews
-            </button>
-          ) : (
-            <button type="button" onClick={handleGoogleConnect}>
-              Connect Google Reviews
-            </button>
-          )}
+          {shell.featureFlags.googleReviews ? (
+            googleConnection?.status === "connected" ? (
+              <button type="button" onClick={handleGoogleSync}>
+                Sync Google Reviews
+              </button>
+            ) : (
+              <button type="button" onClick={handleGoogleConnect}>
+                Connect Google Reviews
+              </button>
+            )
+          ) : null}
+          <button type="button" onClick={() => setShowManualEntry((open) => !open)}>
+            {showManualEntry ? "Cancel entry" : "Add review"}
+          </button>
           <label style={{ cursor: "pointer" }}>
             Import Foodpanda CSV
             <input
@@ -277,6 +309,56 @@ export function ReviewsPage() {
       ) : null}
       {googleMessage ? (
         <div style={{ marginBottom: 16, color: "#4b5563" }}>{googleMessage}</div>
+      ) : null}
+
+      {showManualEntry ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 16,
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            display: "grid",
+            gap: 12,
+            maxWidth: 480,
+          }}
+        >
+          <h2 style={{ fontSize: 16, margin: 0 }}>Add Foodpanda review</h2>
+          <input
+            placeholder="Reviewer name"
+            value={manualReviewer}
+            onChange={(event) => setManualReviewer(event.target.value)}
+          />
+          <select
+            value={manualRating}
+            onChange={(event) => setManualRating(event.target.value)}
+          >
+            {[5, 4, 3, 2, 1].map((value) => (
+              <option key={value} value={value}>
+                {value} stars
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Location name (optional)"
+            value={manualLocation}
+            onChange={(event) => setManualLocation(event.target.value)}
+          />
+          <textarea
+            placeholder="Review content"
+            value={manualContent}
+            onChange={(event) => setManualContent(event.target.value)}
+            rows={4}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              handleManualCreate().catch(() => setError("Could not add review"));
+            }}
+          >
+            Save review
+          </button>
+        </div>
       ) : null}
 
       <div

@@ -39,6 +39,18 @@ export const reviewListQuerySchema = z.object({
 
 export type ReviewListQuery = z.infer<typeof reviewListQuerySchema>;
 
+export const createReviewRequestSchema = z.object({
+  source: reviewSourceSchema,
+  reviewerName: z.string().min(1),
+  rating: z.number().int().min(1).max(5),
+  content: z.string().min(1),
+  locationName: z.string().optional(),
+  listingName: z.string().optional(),
+  postedAt: z.iso.datetime().optional(),
+});
+
+export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
+
 export const importReviewsRequestSchema = z.object({
   source: reviewSourceSchema,
   csv: z.string().min(1),

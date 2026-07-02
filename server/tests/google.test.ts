@@ -53,6 +53,12 @@ async function seedTenantApp(client: GoogleBusinessClient) {
     name: "Hafiz Sweets",
     clerkOrgId: "org_hafiz",
     primaryColor: "#7c3aed",
+    featureFlags: {
+      socialListening: false,
+      competitorAnalytics: false,
+      aiReplies: false,
+      googleReviews: true,
+    },
   });
 
   return createApp({
@@ -165,5 +171,26 @@ describe("Google Business Profile integration", () => {
       "/api/tenant/by-slug/hafiz-sweets/google/status",
     );
     expect(googleConnectionSchema.parse(status.body).status).toBe("expired");
+  });
+
+  it("rejects Google connect when feature flag is disabled", async () => {
+    const googleClient = createMockGoogleClient();
+    await Tenant.create({
+      slug: "flagged-off",
+      name: "Flagged Off",
+      clerkOrgId: "org_flagged",
+      primaryColor: "#7c3aed",
+    });
+    const app = createApp({
+      getAuth: () => ({ userId: "user_1", orgId: "org_flagged" }),
+      googleClient,
+    });
+
+    const response = await request(app)
+      .post("/api/tenant/by-slug/flagged-off/google/connect")
+      .send({ redirectUri: "http://localhost:5173/google/callback" });
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe("Google reviews not enabled");
   });
 });

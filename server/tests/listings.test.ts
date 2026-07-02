@@ -71,6 +71,12 @@ describe("tenant listings", () => {
       name: "Hafiz Sweets",
       clerkOrgId: "org_hafiz",
       primaryColor: "#7c3aed",
+      featureFlags: {
+        socialListening: false,
+        competitorAnalytics: false,
+        aiReplies: false,
+        googleReviews: true,
+      },
     });
     await Location.create({
       tenantId: tenant._id,
