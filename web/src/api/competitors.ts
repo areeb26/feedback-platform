@@ -10,15 +10,14 @@ import {
   type CompetitorRefreshResponse,
   type CreateCompetitorRequest,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const competitorListSchema = competitorSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchCompetitors(slug: string): Promise<Competitor[]> {
-  const response = await fetch(`${tenantBase(slug)}/competitors`);
+  const response = await apiFetch(`${tenantBase(slug)}/competitors`);
   if (!response.ok) {
     throw new Error("Failed to load competitors");
   }
@@ -30,7 +29,7 @@ export async function createCompetitor(
   input: CreateCompetitorRequest,
 ): Promise<Competitor> {
   const body = createCompetitorRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/competitors`, {
+  const response = await apiFetch(`${tenantBase(slug)}/competitors`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -45,7 +44,7 @@ export async function deleteCompetitor(
   slug: string,
   competitorId: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/competitors/${competitorId}`,
     { method: "DELETE" },
   );
@@ -57,7 +56,7 @@ export async function deleteCompetitor(
 export async function refreshCompetitors(
   slug: string,
 ): Promise<CompetitorRefreshResponse> {
-  const response = await fetch(`${tenantBase(slug)}/competitors/refresh`, {
+  const response = await apiFetch(`${tenantBase(slug)}/competitors/refresh`, {
     method: "POST",
   });
   if (!response.ok) {
@@ -79,7 +78,7 @@ export async function fetchCompetitorAnalytics(
   if (params.search) searchParams.set("search", params.search);
 
   const suffix = searchParams.size ? `?${searchParams.toString()}` : "";
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/analytics/competitors${suffix}`,
   );
   if (!response.ok) {

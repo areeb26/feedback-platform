@@ -3,15 +3,14 @@ import {
   listingSyncResponseSchema,
   type Listing,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const listingListSchema = listingSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchListings(slug: string): Promise<Listing[]> {
-  const response = await fetch(`${tenantBase(slug)}/listings`);
+  const response = await apiFetch(`${tenantBase(slug)}/listings`);
   if (!response.ok) {
     throw new Error("Failed to load listings");
   }
@@ -19,7 +18,7 @@ export async function fetchListings(slug: string): Promise<Listing[]> {
 }
 
 export async function syncListings(slug: string) {
-  const response = await fetch(`${tenantBase(slug)}/listings/sync`, {
+  const response = await apiFetch(`${tenantBase(slug)}/listings/sync`, {
     method: "POST",
   });
   if (!response.ok) {

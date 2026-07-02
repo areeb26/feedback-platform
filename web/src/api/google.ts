@@ -7,15 +7,14 @@ import {
   type GoogleConnection,
   type GoogleSyncResponse,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 const redirectUri = `${window.location.origin}/google/callback`;
 
 export async function fetchGoogleConnection(slug: string): Promise<GoogleConnection> {
-  const response = await fetch(`${tenantBase(slug)}/google/status`);
+  const response = await apiFetch(`${tenantBase(slug)}/google/status`);
   if (!response.ok) {
     throw new Error("Failed to load Google connection");
   }
@@ -24,7 +23,7 @@ export async function fetchGoogleConnection(slug: string): Promise<GoogleConnect
 
 export async function startGoogleConnect(slug: string) {
   const body = googleConnectStartRequestSchema.parse({ redirectUri });
-  const response = await fetch(`${tenantBase(slug)}/google/connect`, {
+  const response = await apiFetch(`${tenantBase(slug)}/google/connect`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -43,7 +42,7 @@ export async function completeGoogleCallback(
     ...input,
     redirectUri,
   });
-  const response = await fetch(`${tenantBase(slug)}/google/callback`, {
+  const response = await apiFetch(`${tenantBase(slug)}/google/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -55,7 +54,7 @@ export async function completeGoogleCallback(
 }
 
 export async function syncGoogleReviews(slug: string): Promise<GoogleSyncResponse> {
-  const response = await fetch(`${tenantBase(slug)}/google/sync`, {
+  const response = await apiFetch(`${tenantBase(slug)}/google/sync`, {
     method: "POST",
   });
   if (!response.ok) {

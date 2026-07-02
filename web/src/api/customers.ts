@@ -1,13 +1,12 @@
 import { customerSchema, type Customer } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const customerListSchema = customerSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchCustomers(slug: string): Promise<Customer[]> {
-  const response = await fetch(`${tenantBase(slug)}/customers`);
+  const response = await apiFetch(`${tenantBase(slug)}/customers`);
   if (!response.ok) {
     throw new Error("Failed to load customers");
   }

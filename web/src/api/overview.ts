@@ -4,10 +4,9 @@ import {
   type Overview,
   type OverviewQuery,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchOverview(
   slug: string,
@@ -20,9 +19,10 @@ export async function fetchOverview(
   if (parsed.endDate) params.set("endDate", parsed.endDate);
   if (parsed.locationId) params.set("locationId", parsed.locationId);
   if (parsed.surveyId) params.set("surveyId", parsed.surveyId);
+  if (parsed.label) params.set("label", parsed.label);
 
   const qs = params.toString();
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/overview${qs ? `?${qs}` : ""}`,
   );
   if (!response.ok) {
@@ -31,9 +31,6 @@ export async function fetchOverview(
   return overviewSchema.parse(await response.json());
 }
 
-export function formatTrend(value: number) {
-  const prefix = value > 0 ? "+" : "";
-  return `${prefix}${value}`;
-}
+export { formatTrend } from "../lib/formatters";
 
 export type { Overview };

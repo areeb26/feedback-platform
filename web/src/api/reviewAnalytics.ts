@@ -4,10 +4,9 @@ import {
   type ReviewAnalytics,
   type ReviewAnalyticsQuery,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchReviewAnalytics(
   slug: string,
@@ -23,7 +22,7 @@ export async function fetchReviewAnalytics(
   if (parsed.label) params.set("label", parsed.label);
 
   const qs = params.toString();
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/analytics/reviews${qs ? `?${qs}` : ""}`,
   );
   if (!response.ok) {

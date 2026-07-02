@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@clerk/react": "^6.11.3",
     "@feedback-platform/shared": "*",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

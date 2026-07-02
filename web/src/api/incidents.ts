@@ -6,15 +6,29 @@ import {
   type Incident,
   type UpdateIncidentRequest,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const incidentListSchema = incidentSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
+
+export function exportIncidentsUrl(slug: string) {
+  return `${tenantBase(slug)}/incidents/export`;
+}
+
+export async function fetchIncident(
+  slug: string,
+  incidentId: string,
+): Promise<Incident> {
+  const response = await apiFetch(`${tenantBase(slug)}/incidents/${incidentId}`);
+  if (!response.ok) {
+    throw new Error("Failed to load incident");
+  }
+  return incidentSchema.parse(await response.json());
 }
 
 export async function fetchIncidents(slug: string): Promise<Incident[]> {
-  const response = await fetch(`${tenantBase(slug)}/incidents`);
+  const response = await apiFetch(`${tenantBase(slug)}/incidents`);
   if (!response.ok) {
     throw new Error("Failed to load incidents");
   }
@@ -27,7 +41,7 @@ export async function updateIncident(
   input: UpdateIncidentRequest,
 ): Promise<Incident> {
   const body = updateIncidentRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/incidents/${incidentId}`, {
+  const response = await apiFetch(`${tenantBase(slug)}/incidents/${incidentId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -43,7 +57,7 @@ export async function createIncident(
   input: CreateIncidentRequest,
 ): Promise<Incident> {
   const body = createIncidentRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/incidents`, {
+  const response = await apiFetch(`${tenantBase(slug)}/incidents`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

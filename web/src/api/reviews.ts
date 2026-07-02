@@ -1,19 +1,20 @@
 import {
+  createReviewRequestSchema,
   importReviewsRequestSchema,
   importReviewsResponseSchema,
   replyReviewRequestSchema,
   reviewListQuerySchema,
   reviewSchema,
+  type CreateReviewRequest,
   type ImportReviewsRequest,
   type ReplyReviewRequest,
   type Review,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const reviewListSchema = reviewSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 function reviewSearchParams(query: Record<string, unknown> = {}) {
   const parsedQuery = reviewListQuerySchema.parse(query);
@@ -32,7 +33,7 @@ export async function fetchReviews(
 ): Promise<Review[]> {
   const params = reviewSearchParams(query);
   const qs = params.toString();
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/reviews${qs ? `?${qs}` : ""}`,
   );
   if (!response.ok) {
@@ -41,12 +42,28 @@ export async function fetchReviews(
   return reviewListSchema.parse(await response.json());
 }
 
+export async function createReview(
+  slug: string,
+  input: CreateReviewRequest,
+): Promise<Review> {
+  const body = createReviewRequestSchema.parse(input);
+  const response = await apiFetch(`${tenantBase(slug)}/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to create review");
+  }
+  return reviewSchema.parse(await response.json());
+}
+
 export async function importReviewsCsv(
   slug: string,
   input: ImportReviewsRequest,
 ): Promise<number> {
   const body = importReviewsRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/reviews/import`, {
+  const response = await apiFetch(`${tenantBase(slug)}/reviews/import`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -64,7 +81,7 @@ export async function replyToReview(
   input: ReplyReviewRequest,
 ): Promise<Review> {
   const body = replyReviewRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/reviews/${reviewId}/reply`, {
+  const response = await apiFetch(`${tenantBase(slug)}/reviews/${reviewId}/reply`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

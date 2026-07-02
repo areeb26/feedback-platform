@@ -10,19 +10,18 @@ import {
   type GenerateRepliesResponse,
   type UpdateAutoReplyRuleRequest,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
 const ruleListSchema = autoReplyRuleSchema.array();
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function generateReviewReplies(
   slug: string,
   input: GenerateRepliesRequest,
 ): Promise<GenerateRepliesResponse> {
   const body = generateRepliesRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/reviews/generate-replies`, {
+  const response = await apiFetch(`${tenantBase(slug)}/reviews/generate-replies`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -37,7 +36,7 @@ export async function generateReviewReplies(
 }
 
 export async function fetchAutoReplyRules(slug: string): Promise<AutoReplyRule[]> {
-  const response = await fetch(`${tenantBase(slug)}/auto-reply-rules`);
+  const response = await apiFetch(`${tenantBase(slug)}/auto-reply-rules`);
   if (!response.ok) {
     throw new Error("Failed to load auto-reply rules");
   }
@@ -49,7 +48,7 @@ export async function createAutoReplyRule(
   input: CreateAutoReplyRuleRequest,
 ): Promise<AutoReplyRule> {
   const body = createAutoReplyRuleRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/auto-reply-rules`, {
+  const response = await apiFetch(`${tenantBase(slug)}/auto-reply-rules`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -66,7 +65,7 @@ export async function updateAutoReplyRule(
   input: UpdateAutoReplyRuleRequest,
 ): Promise<AutoReplyRule> {
   const body = updateAutoReplyRuleRequestSchema.parse(input);
-  const response = await fetch(`${tenantBase(slug)}/auto-reply-rules/${ruleId}`, {
+  const response = await apiFetch(`${tenantBase(slug)}/auto-reply-rules/${ruleId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -81,7 +80,7 @@ export async function deleteAutoReplyRule(
   slug: string,
   ruleId: string,
 ): Promise<void> {
-  const response = await fetch(`${tenantBase(slug)}/auto-reply-rules/${ruleId}`, {
+  const response = await apiFetch(`${tenantBase(slug)}/auto-reply-rules/${ruleId}`, {
     method: "DELETE",
   });
   if (!response.ok) {

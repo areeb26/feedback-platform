@@ -4,10 +4,9 @@ import {
   type IncidentAnalytics,
   type IncidentAnalyticsQuery,
 } from "@feedback-platform/shared";
+import { apiFetch } from "./http";
+import { tenantBase } from "./tenantHttp";
 
-function tenantBase(slug: string) {
-  return `/api/tenant/by-slug/${slug}`;
-}
 
 export async function fetchIncidentAnalytics(
   slug: string,
@@ -21,7 +20,7 @@ export async function fetchIncidentAnalytics(
   if (parsed.locationId) params.set("locationId", parsed.locationId);
 
   const qs = params.toString();
-  const response = await fetch(
+  const response = await apiFetch(
     `${tenantBase(slug)}/analytics/incidents${qs ? `?${qs}` : ""}`,
   );
   if (!response.ok) {
@@ -30,10 +29,7 @@ export async function fetchIncidentAnalytics(
   return incidentAnalyticsSchema.parse(await response.json());
 }
 
-export function formatTrend(value: number) {
-  const prefix = value > 0 ? "+" : "";
-  return `${prefix}${value}`;
-}
+export { formatTrend } from "../lib/formatters";
 
 export function formatDuration(minutes: number) {
   if (minutes === 0) {
