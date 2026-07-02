@@ -103,3 +103,23 @@ export function labelForLocale(
 ): string {
   return label[locale];
 }
+
+const CHANNEL_LABELS_EN: Record<Channel, string> = {
+  in_store: "In-store",
+  takeaway: "Takeaway",
+  delivery: "Delivery",
+};
+
+export function channelLabelEn(channel: Channel): string {
+  return CHANNEL_LABELS_EN[channel];
+}
+
+export function issueCategoryLabelEn(categoryId: string): string {
+  for (const options of Object.values(DEFAULT_ISSUE_CATEGORIES)) {
+    const match = options.find((option) => option.id === categoryId);
+    if (match) {
+      return match.label.en;
+    }
+  }
+  return categoryId.replaceAll("_", " ");
+}

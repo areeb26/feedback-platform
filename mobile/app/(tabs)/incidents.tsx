@@ -15,6 +15,7 @@ import {
   formatIncidentDate,
   statusLabel,
 } from "../../src/api/incidents";
+import { incidentContextLabel } from "../../src/lib/labels";
 import { useTenant } from "../../src/context/TenantContext";
 
 export default function IncidentsScreen() {
@@ -88,6 +89,9 @@ export default function IncidentsScreen() {
               {item.surveyName}
               {item.rating != null ? ` · ${item.rating}★` : ""}
             </Text>
+            {incidentContextLabel(item) ? (
+              <Text style={styles.context}>{incidentContextLabel(item)}</Text>
+            ) : null}
             <Text style={styles.date}>{formatIncidentDate(item.createdAt)}</Text>
           </Pressable>
         )}
@@ -139,6 +143,11 @@ const styles = StyleSheet.create({
   meta: {
     marginTop: 4,
     color: "#374151",
+  },
+  context: {
+    marginTop: 4,
+    color: "#6b7280",
+    fontSize: 13,
   },
   date: {
     marginTop: 4,

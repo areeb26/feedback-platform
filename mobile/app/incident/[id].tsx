@@ -10,8 +10,10 @@ import {
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import type { Incident } from "@feedback-platform/shared";
 import {
-  fetchIncidents,
+  fetchIncident,
   formatIncidentDate,
+  channelLabelEn,
+  issueCategoryLabelEn,
   statusLabel,
   updateIncident,
 } from "../../src/api/incidents";
@@ -32,13 +34,10 @@ export default function IncidentDetailScreen() {
 
     setError(null);
     try {
-      const incidents = await fetchIncidents(slug, getToken);
-      const match = incidents.find((item) => item.id === id) ?? null;
+      const match = await fetchIncident(slug, id, getToken);
       setIncident(match);
-      if (!match) {
-        setError("Incident not found");
-      }
     } catch (err) {
+      setIncident(null);
       setError(err instanceof Error ? err.message : "Failed to load incident");
     } finally {
       setLoading(false);
@@ -108,6 +107,22 @@ export default function IncidentDetailScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Rating</Text>
           <Text style={styles.value}>{incident.rating} / 5</Text>
+        </View>
+      ) : null}
+
+      {incident.channel ? (
+        <View style={styles.section}>
+          <Text style={styles.label}>Channel</Text>
+          <Text style={styles.value}>{channelLabelEn(incident.channel)}</Text>
+        </View>
+      ) : null}
+
+      {incident.issueCategory ? (
+        <View style={styles.section}>
+          <Text style={styles.label}>Issue</Text>
+          <Text style={styles.value}>
+            {issueCategoryLabelEn(incident.issueCategory)}
+          </Text>
         </View>
       ) : null}
 

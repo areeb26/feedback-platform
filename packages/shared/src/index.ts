@@ -65,6 +65,8 @@ export {
   defaultSurveyFollowUp,
   INCIDENT_RATING_THRESHOLD,
   issueCategoryOptionSchema,
+  issueCategoryLabelEn,
+  channelLabelEn,
   labelForLocale,
   localizedLabelSchema,
   REVIEW_NUDGE_MIN_RATING,

@@ -6,10 +6,24 @@ import {
 } from "@feedback-platform/shared";
 import { apiFetch } from "./client";
 
+export { statusLabel, channelLabelEn, issueCategoryLabelEn } from "../lib/labels";
+
 const incidentListSchema = incidentSchema.array();
 
 function tenantBase(slug: string) {
   return `/api/tenant/by-slug/${slug}`;
+}
+
+export async function fetchIncident(
+  slug: string,
+  incidentId: string,
+  getToken: () => Promise<string | null>,
+): Promise<Incident> {
+  const payload = await apiFetch<unknown>(
+    `${tenantBase(slug)}/incidents/${incidentId}`,
+    getToken,
+  );
+  return incidentSchema.parse(payload);
 }
 
 export async function fetchIncidents(
@@ -50,10 +64,4 @@ export function formatIncidentDate(isoDate: string) {
     minute: "2-digit",
     hour12: false,
   }).format(date);
-}
-
-export function statusLabel(status: Incident["status"]) {
-  if (status === "reviewed") return "Reviewed";
-  if (status === "resolved") return "Resolved";
-  return "Created";
 }
